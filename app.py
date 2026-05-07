@@ -256,6 +256,27 @@ def health():
     return jsonify({"ok": True})
 
 
+@app.get("/health/db")
+def health_db():
+    try:
+        init_db()
+        with db_conn() as conn:
+            conn.execute("SELECT 1").fetchone()
+        return jsonify({"ok": True})
+    except Exception as error:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": error.__class__.__name__,
+                    "message": str(error),
+                    "databaseUrlConfigured": bool(os.getenv("DATABASE_URL")),
+                }
+            ),
+            500,
+        )
+
+
 @app.post("/setup/init-db")
 def setup_init_db():
     expected = os.getenv("SETUP_TOKEN")
