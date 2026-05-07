@@ -36,6 +36,7 @@ DATABASE_URL = os.getenv(
 
 app = Flask(__name__)
 CORS(app)
+DB_INITIALIZED = False
 
 
 @contextmanager
@@ -239,6 +240,15 @@ def get_company_location(conn):
         "longitude": float(settings.get("company_longitude", "-15.9582")),
         "radiusMeters": float(settings.get("company_radius_m", "150")),
     }
+
+
+@app.before_request
+def ensure_database_ready():
+    global DB_INITIALIZED
+    if DB_INITIALIZED or request.endpoint in {"health", "setup_init_db"}:
+        return
+    init_db()
+    DB_INITIALIZED = True
 
 
 @app.get("/health")
