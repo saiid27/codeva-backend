@@ -224,6 +224,19 @@ def init_db():
                 """,
                 (key, value),
             )
+        ensure_attendance_columns(conn)
+
+
+def ensure_attendance_columns(conn):
+    columns = {
+        "time": "TEXT",
+        "latitude": "DOUBLE PRECISION",
+        "longitude": "DOUBLE PRECISION",
+        "distance_m": "DOUBLE PRECISION",
+        "verification_reason": "TEXT",
+    }
+    for column, column_type in columns.items():
+        conn.execute(f"ALTER TABLE attendance ADD COLUMN IF NOT EXISTS {column} {column_type}")
 
 
 def get_company_location(conn):
