@@ -90,7 +90,7 @@ def password_matches(stored_hash, password):
 
 def smtp_configured():
     return all(
-        os.getenv(key)
+        os.getenv(key, "").strip()
         for key in ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]
     )
 
@@ -103,7 +103,7 @@ def send_otp_email(email, code):
 
     message = EmailMessage()
     message["Subject"] = "Code de verification CODEVA"
-    message["From"] = os.getenv("SMTP_FROM")
+    message["From"] = os.getenv("SMTP_FROM", "").strip()
     message["To"] = email
     message.set_content(
         "\n".join(
@@ -118,10 +118,10 @@ def send_otp_email(email, code):
         )
     )
 
-    host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER")
-    password = os.getenv("SMTP_PASSWORD")
+    host = os.getenv("SMTP_HOST", "").strip()
+    port = int(os.getenv("SMTP_PORT", "587").strip())
+    user = os.getenv("SMTP_USER", "").strip()
+    password = os.getenv("SMTP_PASSWORD", "").strip().replace(" ", "")
     use_ssl = os.getenv("SMTP_USE_SSL", "0") == "1"
     if use_ssl:
         with smtplib.SMTP_SSL(host, port, timeout=20) as smtp:
@@ -349,6 +349,22 @@ def health_db():
         )
 
 
+@app.get("/health/email")
+def health_email():
+    return jsonify(
+        {
+            "ok": True,
+            "smtpConfigured": smtp_configured(),
+            "hostConfigured": bool(os.getenv("SMTP_HOST", "").strip()),
+            "portConfigured": bool(os.getenv("SMTP_PORT", "").strip()),
+            "userConfigured": bool(os.getenv("SMTP_USER", "").strip()),
+            "passwordConfigured": bool(os.getenv("SMTP_PASSWORD", "").strip()),
+            "fromConfigured": bool(os.getenv("SMTP_FROM", "").strip()),
+            "useSsl": os.getenv("SMTP_USE_SSL", "0").strip() == "1",
+        }
+    )
+
+
 @app.post("/setup/init-db")
 def setup_init_db():
     expected = os.getenv("SETUP_TOKEN")
@@ -391,8 +407,18 @@ def request_otp():
         )
     try:
         sent = send_otp_email(email, code)
-    except Exception:
-        return jsonify({"ok": False, "reason": "email_send_failed"}), 500
+    except Exception as error:
+        app.logger.exception("Failed to send OTP email")
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "reason": "email_send_failed",
+                    "error": error.__class__.__name__,
+                }
+            ),
+            500,
+        )
     response = {"ok": True, "sent": sent}
     if os.getenv("FLASK_DEBUG") == "1":
         response["code"] = code
