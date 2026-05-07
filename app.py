@@ -245,7 +245,7 @@ def get_company_location(conn):
 @app.before_request
 def ensure_database_ready():
     global DB_INITIALIZED
-    if DB_INITIALIZED or request.endpoint in {"health", "setup_init_db"}:
+    if DB_INITIALIZED or request.endpoint in {"health", "health_db", "setup_init_db"}:
         return
     init_db()
     DB_INITIALIZED = True
