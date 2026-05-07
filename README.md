@@ -34,3 +34,9 @@ Use these settings if creating the service manually:
   - optional `SMTP_USE_SSL`
 
 The repository also includes `render.yaml` for a Render Blueprint.
+
+## Public pages
+
+- `/about` - About page.
+- `/contact` - Contact page.
+- `/privacy` - Privacy policy.

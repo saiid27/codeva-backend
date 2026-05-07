@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
 
 import psycopg
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from psycopg.rows import dict_row
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -39,6 +39,7 @@ DATABASE_URL = os.getenv(
 app = Flask(__name__)
 CORS(app)
 DB_INITIALIZED = False
+PAGES_DIR = os.path.join(os.path.dirname(__file__), "static", "pages")
 
 
 @contextmanager
@@ -326,6 +327,21 @@ def ensure_database_ready():
 @app.get("/health")
 def health():
     return jsonify({"ok": True})
+
+
+@app.get("/contact")
+def contact_page():
+    return send_from_directory(PAGES_DIR, "contact.html")
+
+
+@app.get("/about")
+def about_page():
+    return send_from_directory(PAGES_DIR, "about.html")
+
+
+@app.get("/privacy")
+def privacy_page():
+    return send_from_directory(PAGES_DIR, "privacy.html")
 
 
 @app.get("/health/db")
