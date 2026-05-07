@@ -1,8 +1,10 @@
 import argparse
 import os
 import random
+import smtplib
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
 
 import psycopg
@@ -86,6 +88,54 @@ def password_matches(stored_hash, password):
         return False
 
 
+def smtp_configured():
+    return all(
+        os.getenv(key)
+        for key in ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]
+    )
+
+
+def send_otp_email(email, code):
+    if not smtp_configured():
+        if os.getenv("FLASK_DEBUG") == "1":
+            return False
+        raise RuntimeError("SMTP is not configured")
+
+    message = EmailMessage()
+    message["Subject"] = "Code de verification CODEVA"
+    message["From"] = os.getenv("SMTP_FROM")
+    message["To"] = email
+    message.set_content(
+        "\n".join(
+            [
+                "Bonjour,",
+                "",
+                f"Votre code de verification est: {code}",
+                "Ce code expire dans 10 minutes.",
+                "",
+                "Si vous n'avez pas demande ce code, ignorez ce message.",
+            ]
+        )
+    )
+
+    host = os.getenv("SMTP_HOST")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER")
+    password = os.getenv("SMTP_PASSWORD")
+    use_ssl = os.getenv("SMTP_USE_SSL", "0") == "1"
+    if use_ssl:
+        with smtplib.SMTP_SSL(host, port, timeout=20) as smtp:
+            smtp.login(user, password)
+            smtp.send_message(message)
+    else:
+        with smtplib.SMTP(host, port, timeout=20) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(message)
+    return True
+
+
 def user_payload(user):
     return {
         "id": user["id"],
@@ -133,6 +183,7 @@ def init_db():
       id BIGSERIAL PRIMARY KEY,
       email TEXT NOT NULL,
       code TEXT NOT NULL,
+      purpose TEXT NOT NULL DEFAULT 'login',
       expires_at TIMESTAMPTZ NOT NULL,
       used BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -225,6 +276,7 @@ def init_db():
                 (key, value),
             )
         ensure_attendance_columns(conn)
+        ensure_otp_columns(conn)
 
 
 def ensure_attendance_columns(conn):
@@ -237,6 +289,13 @@ def ensure_attendance_columns(conn):
     }
     for column, column_type in columns.items():
         conn.execute(f"ALTER TABLE attendance ADD COLUMN IF NOT EXISTS {column} {column_type}")
+
+
+def ensure_otp_columns(conn):
+    conn.execute(
+        "ALTER TABLE email_otps ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'login'"
+    )
+    conn.execute("ALTER TABLE email_otps ALTER COLUMN purpose SET DEFAULT 'login'")
 
 
 def get_company_location(conn):
@@ -319,12 +378,25 @@ def request_otp():
         code = str(100000 + random.randint(0, 899999))
         conn.execute(
             """
-            INSERT INTO email_otps (email, code, expires_at, used)
-            VALUES (%s, %s, %s, false)
+            INSERT INTO email_otps (email, code, purpose, expires_at, used, created_at)
+            VALUES (%s, %s, %s, %s, false, %s)
             """,
-            (email, code, datetime.now() + timedelta(minutes=10)),
+            (
+                email,
+                code,
+                purpose,
+                datetime.now() + timedelta(minutes=10),
+                datetime.now(),
+            ),
         )
-    return jsonify({"ok": True, "code": code})
+    try:
+        sent = send_otp_email(email, code)
+    except Exception:
+        return jsonify({"ok": False, "reason": "email_send_failed"}), 500
+    response = {"ok": True, "sent": sent}
+    if os.getenv("FLASK_DEBUG") == "1":
+        response["code"] = code
+    return jsonify(response)
 
 
 @app.post("/auth/verify-otp")
@@ -425,6 +497,42 @@ def change_password():
             return jsonify({"ok": False, "reason": "not_found"}), 404
         if not password_matches(user["password_hash"], old_password):
             return jsonify({"ok": False, "reason": "invalid"}), 401
+        conn.execute(
+            "UPDATE users SET password_hash = %s WHERE id = %s",
+            (generate_password_hash(new_password), user["id"]),
+        )
+    return jsonify({"ok": True})
+
+
+@app.post("/auth/reset-password")
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    code = (data.get("code") or "").strip()
+    new_password = data.get("newPassword") or data.get("new_password") or ""
+    if not email or not code or not new_password:
+        return jsonify({"ok": False, "reason": "required"}), 400
+    if len(new_password) < 4:
+        return jsonify({"ok": False, "reason": "weak_password"}), 400
+    with db_conn() as conn:
+        user = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
+        if user is None:
+            return jsonify({"ok": False, "reason": "not_found"}), 404
+        otp = conn.execute(
+            """
+            SELECT id, expires_at
+              FROM email_otps
+             WHERE email = %s AND code = %s AND used = false
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (email, code),
+        ).fetchone()
+        if otp is None:
+            return jsonify({"ok": False, "reason": "invalid"}), 400
+        if datetime.now(otp["expires_at"].tzinfo) > otp["expires_at"]:
+            return jsonify({"ok": False, "reason": "expired"}), 400
+        conn.execute("UPDATE email_otps SET used = true WHERE id = %s", (otp["id"],))
         conn.execute(
             "UPDATE users SET password_hash = %s WHERE id = %s",
             (generate_password_hash(new_password), user["id"]),

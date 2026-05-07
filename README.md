@@ -25,5 +25,12 @@ Use these settings if creating the service manually:
 - Build Command: `pip install -r requirements.txt`
 - Start Command: `gunicorn app:app`
 - Environment variable: `DATABASE_URL` from your Render PostgreSQL database.
+- SMTP variables for OTP email:
+  - `SMTP_HOST`
+  - `SMTP_PORT`
+  - `SMTP_USER`
+  - `SMTP_PASSWORD`
+  - `SMTP_FROM`
+  - optional `SMTP_USE_SSL`
 
 The repository also includes `render.yaml` for a Render Blueprint.
