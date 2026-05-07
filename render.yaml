@@ -12,6 +12,8 @@ services:
           property: connectionString
       - key: FLASK_DEBUG
         value: "0"
+      - key: SETUP_TOKEN
+        generateValue: true
 
 databases:
   - name: codeva-db

@@ -246,6 +246,16 @@ def health():
     return jsonify({"ok": True})
 
 
+@app.post("/setup/init-db")
+def setup_init_db():
+    expected = os.getenv("SETUP_TOKEN")
+    provided = request.headers.get("X-Setup-Token") or request.args.get("token")
+    if not expected or provided != expected:
+        return jsonify({"ok": False, "reason": "forbidden"}), 403
+    init_db()
+    return jsonify({"ok": True})
+
+
 @app.post("/auth/request-otp")
 def request_otp():
     data = request.get_json(silent=True) or {}
