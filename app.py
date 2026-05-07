@@ -351,6 +351,8 @@ def health_db():
 
 @app.get("/health/email")
 def health_email():
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
+    smtp_port = os.getenv("SMTP_PORT", "").strip()
     return jsonify(
         {
             "ok": True,
@@ -361,6 +363,8 @@ def health_email():
             "passwordConfigured": bool(os.getenv("SMTP_PASSWORD", "").strip()),
             "fromConfigured": bool(os.getenv("SMTP_FROM", "").strip()),
             "useSsl": os.getenv("SMTP_USE_SSL", "0").strip() == "1",
+            "smtpHost": smtp_host,
+            "smtpPort": smtp_port,
         }
     )
 
