@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>طلب حذف الحساب - CODEVA Presence</title>
+    <link rel="stylesheet" href="/static/pages/site.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <nav class="nav">
+        <div class="brand">CODEVA Presence</div>
+        <div class="links">
+          <a href="/about">من نحن</a>
+          <a href="/contact">تواصل معنا</a>
+          <a href="/privacy">سياسة الخصوصية</a>
+          <a href="/delete-account">حذف الحساب</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="wrap">
+      <section class="panel">
+        <h1>طلب حذف الحساب</h1>
+        <p class="muted">
+          املأ البيانات التالية وسيتم إنشاء رسالة واتساب جاهزة لإرسال طلب حذف حسابك إلى إدارة CODEVA Presence.
+        </p>
+
+        <form id="deleteAccountForm" class="form" autocomplete="on">
+          <label for="fullName">الاسم الكامل</label>
+          <input id="fullName" name="fullName" type="text" placeholder="اكتب اسمك الكامل" required>
+
+          <label for="email">البريد الإلكتروني</label>
+          <input id="email" name="email" type="email" placeholder="example@email.com" required>
+
+          <label for="phone">رقم الهاتف</label>
+          <input id="phone" name="phone" type="tel" placeholder="+222 ..." required>
+
+          <button type="submit" class="button">إرسال الطلب عبر واتساب</button>
+        </form>
+
+        <p class="note">
+          لا ترسل كلمة المرور الخاصة بك. قد يتم التواصل معك للتحقق من ملكية الحساب قبل تنفيذ الحذف.
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      @2026|codevasolution
+    </footer>
+
+    <script>
+      const form = document.getElementById('deleteAccountForm');
+      const whatsappNumber = '22234182807';
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const fullName = document.getElementById('fullName').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+
+        const message = [
+          'طلب حذف حساب',
+          'الاسم: ' + fullName,
+          'البريد الإلكتروني: ' + email,
+          'رقم الهاتف: ' + phone,
+          'أرغب في حذف حسابي وبياناتي من CODEVA Presence.'
+        ].join('\n');
+
+        window.open('https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(message), '_blank');
+      });
+    </script>
+  </body>
+</html>

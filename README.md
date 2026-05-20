@@ -40,3 +40,4 @@ The repository also includes `render.yaml` for a Render Blueprint.
 - `/about` - About page.
 - `/contact` - Contact page.
 - `/privacy` - Privacy policy.
+- `/delete-account` - Account deletion request page.

@@ -86,6 +86,57 @@ li {
   border-bottom: 1px solid #e6eee9;
 }
 
+.form {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.form label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.form input {
+  width: 100%;
+  border: 1px solid #cbdcd4;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #17362d;
+  font: inherit;
+  background: #fff;
+}
+
+.form input:focus {
+  border-color: #2f6e5a;
+  outline: 3px solid rgba(47, 110, 90, 0.16);
+}
+
+.button {
+  width: fit-content;
+  border: 0;
+  border-radius: 8px;
+  margin-top: 10px;
+  padding: 12px 18px;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  background: #2f6e5a;
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus {
+  background: #245746;
+}
+
+.note {
+  border-top: 1px solid #e6eee9;
+  margin-top: 24px;
+  padding-top: 16px;
+  color: #5d756d;
+}
+
 .footer {
   max-width: 920px;
   margin: 0 auto;

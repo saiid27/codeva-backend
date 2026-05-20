@@ -344,6 +344,11 @@ def privacy_page():
     return send_from_directory(PAGES_DIR, "privacy.html")
 
 
+@app.get("/delete-account")
+def delete_account_page():
+    return send_from_directory(PAGES_DIR, "delete-account.html")
+
+
 @app.get("/health/db")
 def health_db():
     try:
