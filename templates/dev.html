@@ -15,7 +15,12 @@
           <h1>صفحة المطور</h1>
           <p>إضافة وتجميد وحذف حسابات مدراء الشركات.</p>
         </div>
-        <a class="dev-link" href="/web">صفحة الدخول</a>
+        <div class="dev-header-actions">
+          <a class="dev-link" href="/web">صفحة الدخول</a>
+          <form action="/dev/logout" method="post">
+            <button class="dev-link logout-button" type="submit">خروج</button>
+          </form>
+        </div>
       </header>
 
       {% if message %}

@@ -8,7 +8,16 @@ from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
 
 import psycopg
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import (
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask_cors import CORS
 from psycopg.rows import dict_row
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -37,9 +46,12 @@ DATABASE_URL = os.getenv(
 
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SETUP_TOKEN") or "codeva-dev-secret"
 CORS(app)
 DB_INITIALIZED = False
 PAGES_DIR = os.path.join(os.path.dirname(__file__), "static", "pages")
+DEV_EMAIL = os.getenv("DEV_EMAIL", "codeva@gmail.com")
+DEV_PASSWORD = os.getenv("DEV_PASSWORD", "codeva123")
 
 
 @contextmanager
@@ -317,7 +329,6 @@ def get_company_location(conn):
 
 @app.before_request
 def ensure_database_ready():
-    global DB_INITIALIZED
     if DB_INITIALIZED or request.endpoint in {
         "health",
         "health_db",
@@ -328,7 +339,22 @@ def ensure_database_ready():
         "about_page",
         "privacy_page",
         "delete_account_page",
+        "dev_login_page",
+        "dev_login_submit",
+        "dev_logout",
+        "dev_page",
+        "create_dev_admin",
+        "freeze_dev_admin",
+        "activate_dev_admin",
+        "delete_dev_admin",
     }:
+        return
+    ensure_database_initialized()
+
+
+def ensure_database_initialized():
+    global DB_INITIALIZED
+    if DB_INITIALIZED:
         return
     init_db()
     DB_INITIALIZED = True
@@ -365,7 +391,41 @@ def delete_account_page():
     return send_from_directory(PAGES_DIR, "delete-account.html")
 
 
+def dev_is_authenticated():
+    return session.get("dev_authenticated") is True
+
+
+def require_dev_login():
+    if dev_is_authenticated():
+        return None
+    return redirect(url_for("dev_login_page"))
+
+
+@app.get("/dev/login")
+def dev_login_page():
+    if dev_is_authenticated():
+        return redirect(url_for("dev_page"))
+    return render_template("dev_login.html", error=None)
+
+
+@app.post("/dev/login")
+def dev_login_submit():
+    email = (request.form.get("email") or "").strip()
+    password = request.form.get("password") or ""
+    if email == DEV_EMAIL and password == DEV_PASSWORD:
+        session["dev_authenticated"] = True
+        return redirect(url_for("dev_page"))
+    return render_template("dev_login.html", error="بيانات الدخول غير صحيحة"), 401
+
+
+@app.post("/dev/logout")
+def dev_logout():
+    session.pop("dev_authenticated", None)
+    return redirect(url_for("dev_login_page"))
+
+
 def dev_admins_payload(message=None, error=None):
+    ensure_database_initialized()
     with db_conn() as conn:
         admins = conn.execute(
             """
@@ -385,11 +445,18 @@ def dev_admins_payload(message=None, error=None):
 
 @app.get("/dev")
 def dev_page():
+    auth = require_dev_login()
+    if auth:
+        return auth
     return dev_admins_payload()
 
 
 @app.post("/dev/admins")
 def create_dev_admin():
+    auth = require_dev_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
     full_name = (request.form.get("fullName") or "").strip()
     email = (request.form.get("email") or "").strip()
     password = request.form.get("password") or "Temp1234"
@@ -423,6 +490,10 @@ def create_dev_admin():
 
 @app.post("/dev/admins/<int:user_id>/freeze")
 def freeze_dev_admin(user_id):
+    auth = require_dev_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
     with db_conn() as conn:
         conn.execute(
             "UPDATE users SET status = 'frozen' WHERE id = %s AND role = 'admin'",
@@ -433,6 +504,10 @@ def freeze_dev_admin(user_id):
 
 @app.post("/dev/admins/<int:user_id>/activate")
 def activate_dev_admin(user_id):
+    auth = require_dev_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
     with db_conn() as conn:
         conn.execute(
             "UPDATE users SET status = 'approved' WHERE id = %s AND role = 'admin'",
@@ -443,6 +518,10 @@ def activate_dev_admin(user_id):
 
 @app.post("/dev/admins/<int:user_id>/delete")
 def delete_dev_admin(user_id):
+    auth = require_dev_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
     with db_conn() as conn:
         conn.execute(
             "DELETE FROM users WHERE id = %s AND role = 'admin'",

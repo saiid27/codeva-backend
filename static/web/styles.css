@@ -226,6 +226,34 @@ button {
   font-weight: 800;
 }
 
+.dev-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dev-header-actions form {
+  margin: 0;
+}
+
+.logout-button {
+  width: auto;
+  margin: 0;
+  border: 0;
+  background: #dc2626;
+}
+
+.form-error {
+  margin: 14px 0 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: #fecaca;
+  background: rgba(220, 38, 38, .24);
+  text-align: center;
+  font-size: 13px;
+}
+
 .notice {
   margin: 12px 0;
   padding: 12px 14px;
