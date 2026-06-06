@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 import psycopg
 from flask import (
@@ -56,26 +56,53 @@ DEV_EMAIL = os.getenv("DEV_EMAIL", "codeva@gmail.com")
 DEV_PASSWORD = os.getenv("DEV_PASSWORD", "codeva123")
 
 
-def database_connect_kwargs():
+def database_connect_attempts():
     parsed = urlparse(DATABASE_URL)
     host = parsed.hostname or ""
     query = parse_qs(parsed.query)
-    kwargs = {"row_factory": dict_row, "connect_timeout": 10}
-    if host and host not in {"localhost", "127.0.0.1", "::1"} and "sslmode" not in query:
-        kwargs["sslmode"] = "require"
-    return kwargs
+    has_sslmode = "sslmode" in query
+    base_kwargs = {"row_factory": dict_row, "connect_timeout": 10}
+    attempts = [(DATABASE_URL, dict(base_kwargs))]
+
+    if not has_sslmode and host not in {"localhost", "127.0.0.1", "::1"}:
+        require_kwargs = dict(base_kwargs)
+        require_kwargs["sslmode"] = "require"
+        attempts.append((DATABASE_URL, require_kwargs))
+
+    if host.endswith(".render.com") and "-postgres.render.com" in host:
+        internal_host = host.split(".", 1)[0]
+        internal_netloc = parsed.netloc.replace(host, internal_host, 1)
+        internal_url = urlunparse(parsed._replace(netloc=internal_netloc, query=""))
+        internal_kwargs = dict(base_kwargs)
+        internal_kwargs["sslmode"] = "disable"
+        attempts.append((internal_url, internal_kwargs))
+        attempts.append((internal_url, dict(base_kwargs)))
+
+    unique_attempts = []
+    seen = set()
+    for conninfo, kwargs in attempts:
+        key = (conninfo, tuple(sorted(kwargs.items())))
+        if key not in seen:
+            seen.add(key)
+            unique_attempts.append((conninfo, kwargs))
+    return unique_attempts
 
 
 @contextmanager
 def db_conn():
-    for attempt in range(3):
-        try:
-            conn = psycopg.connect(DATABASE_URL, **database_connect_kwargs())
-            break
-        except psycopg.OperationalError as error:
-            if attempt == 2:
-                raise
-            time.sleep(0.4 * (attempt + 1))
+    attempts = database_connect_attempts()
+    for retry in range(2):
+        for index, (conninfo, kwargs) in enumerate(attempts):
+            try:
+                conn = psycopg.connect(conninfo, **kwargs)
+                break
+            except psycopg.OperationalError:
+                if retry == 1 and index == len(attempts) - 1:
+                    raise
+        else:
+            time.sleep(0.5 * (retry + 1))
+            continue
+        break
     try:
         yield conn
         conn.commit()
