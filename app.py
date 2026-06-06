@@ -2,10 +2,12 @@ import argparse
 import os
 import random
 import smtplib
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
+from urllib.parse import parse_qs, urlparse
 
 import psycopg
 from flask import (
@@ -54,9 +56,26 @@ DEV_EMAIL = os.getenv("DEV_EMAIL", "codeva@gmail.com")
 DEV_PASSWORD = os.getenv("DEV_PASSWORD", "codeva123")
 
 
+def database_connect_kwargs():
+    parsed = urlparse(DATABASE_URL)
+    host = parsed.hostname or ""
+    query = parse_qs(parsed.query)
+    kwargs = {"row_factory": dict_row, "connect_timeout": 10}
+    if host and host not in {"localhost", "127.0.0.1", "::1"} and "sslmode" not in query:
+        kwargs["sslmode"] = "require"
+    return kwargs
+
+
 @contextmanager
 def db_conn():
-    conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    for attempt in range(3):
+        try:
+            conn = psycopg.connect(DATABASE_URL, **database_connect_kwargs())
+            break
+        except psycopg.OperationalError as error:
+            if attempt == 2:
+                raise
+            time.sleep(0.4 * (attempt + 1))
     try:
         yield conn
         conn.commit()
