@@ -761,6 +761,10 @@ def login():
             return login_result_page("بيانات الدخول غير صحيحة", ok=False), 401
         return jsonify({"ok": False, "reason": "invalid"}), 401
     if is_form_request:
+        if user["role"] == "developer":
+            session["dev_authenticated"] = True
+            session["dev_email"] = user["email"]
+            return redirect(url_for("dev_page"))
         return login_result_page(
             f"تم تسجيل الدخول بنجاح: {user['full_name']} ({user['role']})",
             ok=True,
