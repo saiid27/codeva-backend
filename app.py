@@ -536,18 +536,52 @@ def register():
 
 @app.post("/auth/login")
 def login():
-    data = request.get_json(silent=True) or {}
+    is_form_request = bool(request.form) and not request.is_json
+    data = request.form if is_form_request else (request.get_json(silent=True) or {})
     email = (data.get("email") or "").strip()
     password = data.get("password") or ""
     with db_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
     if user is None:
+        if is_form_request:
+            return login_result_page("بيانات الدخول غير صحيحة", ok=False), 404
         return jsonify({"ok": False, "reason": "not_found"}), 404
     if user["status"] != "approved":
+        if is_form_request:
+            return login_result_page("الحساب غير مفعل بعد", ok=False), 403
         return jsonify({"ok": False, "reason": user["status"]}), 403
     if not password_matches(user["password_hash"], password):
+        if is_form_request:
+            return login_result_page("بيانات الدخول غير صحيحة", ok=False), 401
         return jsonify({"ok": False, "reason": "invalid"}), 401
+    if is_form_request:
+        return login_result_page(
+            f"تم تسجيل الدخول بنجاح: {user['full_name']} ({user['role']})",
+            ok=True,
+        )
     return jsonify({"ok": True, "user": user_payload(user)})
+
+
+def login_result_page(message, ok):
+    color = "#166534" if ok else "#991b1b"
+    background = "#dcfce7" if ok else "#fee2e2"
+    return f"""
+    <!doctype html>
+    <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>CODEVA Presence</title>
+      </head>
+      <body style="margin:0;font-family:Tahoma,Arial,sans-serif;background:#f5f8f7;color:#172033;display:grid;place-items:center;min-height:100vh;">
+        <main style="width:min(100% - 32px,430px);background:#fff;border:1px solid #e4e7ec;border-radius:8px;padding:24px;text-align:center;">
+          <h1 style="margin:0 0 12px;color:#255b48;">CODEVA Presence</h1>
+          <p style="margin:0 0 18px;padding:12px;border-radius:8px;color:{color};background:{background};">{message}</p>
+          <a href="/web" style="display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;border-radius:8px;background:#255b48;color:#fff;text-decoration:none;font-weight:700;">رجوع</a>
+        </main>
+      </body>
+    </html>
+    """
 
 
 @app.post("/auth/change-password")

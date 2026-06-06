@@ -3,57 +3,37 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CODEVA Presence</title>
+    <title>تسجيل الدخول - CODEVA Presence</title>
     <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
   </head>
   <body>
-    <header class="topbar">
-      <nav class="nav">
-        <strong>CODEVA Presence</strong>
-        <div class="links">
-          <a href="/about">من نحن</a>
-          <a href="/contact">تواصل معنا</a>
-          <a href="/privacy">الخصوصية</a>
-        </div>
-      </nav>
-    </header>
+    <main class="login-page">
+      <section class="login-header">
+        <span class="brand-mark">CODEVA</span>
+        <h1>تسجيل الدخول</h1>
+        <p>نظام حضور العمال عبر QR و GPS</p>
+      </section>
 
-    <main class="hero">
-      <section class="hero-content">
-        <p class="eyebrow">نظام حضور للشركات</p>
-        <h1>إدارة حضور العمال عبر QR و GPS</h1>
-        <p>
-          الباكند يعمل ببايثون كما هو، وهذه صفحة ويب بسيطة مرفوعة معه
-          للتعريف بالنظام وربط المستخدمين بالخدمة.
+      <form class="login-card" action="/auth/login" method="post">
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="admin@gmail.com" required>
+
+        <label for="password">كلمة المرور</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+
+        <button type="submit">دخول</button>
+
+        <p class="helper">
+          المدير هو من يضيف حسابات العمال داخل النظام.
         </p>
-        <div class="actions">
-          <a class="button primary" href="/health/db">فحص قاعدة البيانات</a>
-          <a class="button" href="/contact">طلب الدعم</a>
-        </div>
-      </section>
+      </form>
 
-      <section class="panel" aria-label="مميزات النظام">
-        <div>
-          <span>01</span>
-          <strong>حساب المدير</strong>
-          <p>المدير يضيف عمال شركته ويتابع حضورهم.</p>
-        </div>
-        <div>
-          <span>02</span>
-          <strong>حساب العامل</strong>
-          <p>العامل يسجل الحضور عبر QR أو GPS.</p>
-        </div>
-        <div>
-          <span>03</span>
-          <strong>قاعدة البيانات</strong>
-          <p>البيانات محفوظة في قاعدة Render PostgreSQL.</p>
-        </div>
-      </section>
+      <nav class="footer-links" aria-label="روابط مساعدة">
+        <a href="/about">من نحن</a>
+        <a href="/contact">تواصل معنا</a>
+        <a href="/privacy">الخصوصية</a>
+      </nav>
     </main>
-
-    <footer class="footer">
-      @2026 | codevasolution
-    </footer>
   </body>
 </html>
