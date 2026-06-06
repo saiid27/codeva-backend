@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>لوحة المدير - CODEVA Presence</title>
+    <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>لوحة المدير</h1>
+          <p>{{ manager_email }}</p>
+        </div>
+        <form action="/manager/logout" method="post">
+          <button class="dev-link logout-button" type="submit">خروج</button>
+        </form>
+      </header>
+
+      <section class="manager-grid">
+        <a class="manager-tile" href="/manager/workers">
+          <strong>عمالي</strong>
+          <span>عرض قائمة العمال</span>
+        </a>
+        <a class="manager-tile" href="/manager/attendance">
+          <strong>الحضور والغياب</strong>
+          <span>من حضر ومن غاب اليوم</span>
+        </a>
+        <a class="manager-tile" href="/manager/report">
+          <strong>التقرير الأسبوعي</strong>
+          <span>حضور وغياب كل عامل هذا الأسبوع</span>
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

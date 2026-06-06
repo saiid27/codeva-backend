@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>الحضور والغياب - CODEVA Presence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>الحضور والغياب</h1>
+          <p>اليوم: {{ date }}</p>
+        </div>
+        <a class="dev-link" href="/manager">رجوع</a>
+      </header>
+
+      <section class="summary-grid">
+        <div><strong>{{ present_count }}</strong><span>حاضر</span></div>
+        <div><strong>{{ absent_count }}</strong><span>غائب</span></div>
+      </section>
+
+      <section class="dev-card">
+        <div class="admin-list">
+          {% for item in items %}
+            <article class="admin-row">
+              <div>
+                <strong>{{ item.full_name }}</strong>
+                <small>{{ item.email }} · {{ item.job_title or "بدون وظيفة" }} · {{ item.time or "--:--" }}</small>
+              </div>
+              <span class="status {{ item.status }}">{{ "حاضر" if item.status == "present" else "غائب" }}</span>
+            </article>
+          {% else %}
+            <p class="empty">لا توجد حسابات عمال بعد.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

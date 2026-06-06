@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>عمالي - CODEVA Presence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>عمالي</h1>
+          <p>قائمة العمال المسجلين في النظام.</p>
+        </div>
+        <a class="dev-link" href="/manager">رجوع</a>
+      </header>
+
+      <section class="dev-card">
+        <div class="admin-list">
+          {% for worker in workers %}
+            <article class="admin-row">
+              <div>
+                <strong>{{ worker.full_name }}</strong>
+                <small>{{ worker.email }} · {{ worker.job_title or "بدون وظيفة" }} · {{ worker.phone or "بدون هاتف" }}</small>
+              </div>
+              <span class="status {{ worker.status }}">{{ worker.status }}</span>
+            </article>
+          {% else %}
+            <p class="empty">لا توجد حسابات عمال بعد.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

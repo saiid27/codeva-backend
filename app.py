@@ -375,6 +375,11 @@ def ensure_database_ready():
         "freeze_dev_admin",
         "activate_dev_admin",
         "delete_dev_admin",
+        "manager_page",
+        "manager_workers",
+        "manager_attendance",
+        "manager_weekly_report",
+        "manager_logout",
     }:
         return
     ensure_database_initialized()
@@ -463,6 +468,132 @@ def dev_logout():
     session.pop("dev_authenticated", None)
     session.pop("dev_email", None)
     return redirect(url_for("dev_login_page"))
+
+
+def manager_is_authenticated():
+    return session.get("manager_authenticated") is True
+
+
+def require_manager_login():
+    if manager_is_authenticated():
+        return None
+    return redirect(url_for("web_app"))
+
+
+@app.post("/manager/logout")
+def manager_logout():
+    session.pop("manager_authenticated", None)
+    session.pop("manager_email", None)
+    return redirect(url_for("web_app"))
+
+
+@app.get("/manager")
+def manager_page():
+    auth = require_manager_login()
+    if auth:
+        return auth
+    return render_template("manager.html", manager_email=session.get("manager_email"))
+
+
+@app.get("/manager/workers")
+def manager_workers():
+    auth = require_manager_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
+    with db_conn() as conn:
+        workers = conn.execute(
+            """
+            SELECT id, full_name, email, phone, job_title, status, created_at
+              FROM users
+             WHERE role = 'worker'
+             ORDER BY lower(full_name), id DESC
+            """
+        ).fetchall()
+    return render_template("manager_workers.html", workers=workers)
+
+
+@app.get("/manager/attendance")
+def manager_attendance():
+    auth = require_manager_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
+    date = today_date()
+    with db_conn() as conn:
+        items = conn.execute(
+            """
+            SELECT u.id,
+                   u.full_name,
+                   u.email,
+                   u.job_title,
+                   COALESCE(a.status, 'absent') AS status,
+                   a.time
+              FROM users u
+              LEFT JOIN attendance a
+                ON a.user_id = u.id
+               AND a.attend_date = %s
+             WHERE u.role = 'worker'
+             ORDER BY lower(u.full_name), u.id DESC
+            """,
+            (date,),
+        ).fetchall()
+    present_count = sum(1 for item in items if item["status"] == "present")
+    absent_count = len(items) - present_count
+    return render_template(
+        "manager_attendance.html",
+        items=items,
+        date=date,
+        present_count=present_count,
+        absent_count=absent_count,
+    )
+
+
+@app.get("/manager/report")
+def manager_weekly_report():
+    auth = require_manager_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
+    today = datetime.now().date()
+    start = today - timedelta(days=today.weekday())
+    end = start + timedelta(days=6)
+    elapsed_days = (min(today, end) - start).days + 1
+    with db_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT u.id,
+                   u.full_name,
+                   u.email,
+                   u.job_title,
+                   COALESCE(SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END), 0)::int AS present
+              FROM users u
+              LEFT JOIN attendance a
+                ON a.user_id = u.id
+               AND a.attend_date BETWEEN %s AND %s
+             WHERE u.role = 'worker'
+             GROUP BY u.id
+             ORDER BY lower(u.full_name), u.id DESC
+            """,
+            (start, end),
+        ).fetchall()
+    report = [
+        {
+            "name": row["full_name"],
+            "email": row["email"],
+            "job": row["job_title"],
+            "present": row["present"],
+            "absent": max(elapsed_days - row["present"], 0),
+        }
+        for row in rows
+    ]
+    return render_template(
+        "manager_report.html",
+        report=report,
+        start=start.isoformat(),
+        end=end.isoformat(),
+        elapsed_days=elapsed_days,
+    )
 
 
 def dev_admins_payload(message=None, error=None):
@@ -769,6 +900,10 @@ def login():
             session["dev_authenticated"] = True
             session["dev_email"] = user["email"]
             return redirect(url_for("dev_page"))
+        if user["role"] == "admin":
+            session["manager_authenticated"] = True
+            session["manager_email"] = user["email"]
+            return redirect(url_for("manager_page"))
         return login_result_page(
             f"تم تسجيل الدخول بنجاح: {user['full_name']} ({user['role']})",
             ok=True,

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>التقرير الأسبوعي - CODEVA Presence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>التقرير الأسبوعي</h1>
+          <p>من {{ start }} إلى {{ end }}</p>
+        </div>
+        <a class="dev-link" href="/manager">رجوع</a>
+      </header>
+
+      <section class="dev-card">
+        <div class="report-table">
+          <div class="report-head">
+            <span>العامل</span>
+            <span>الحضور</span>
+            <span>الغياب</span>
+          </div>
+          {% for item in report %}
+            <div class="report-row">
+              <span>
+                <strong>{{ item.name }}</strong>
+                <small>{{ item.email }} · {{ item.job or "بدون وظيفة" }}</small>
+              </span>
+              <b>{{ item.present }}</b>
+              <b>{{ item.absent }}</b>
+            </div>
+          {% else %}
+            <p class="empty">لا توجد حسابات عمال بعد.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
