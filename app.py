@@ -365,6 +365,92 @@ def delete_account_page():
     return send_from_directory(PAGES_DIR, "delete-account.html")
 
 
+def dev_admins_payload(message=None, error=None):
+    with db_conn() as conn:
+        admins = conn.execute(
+            """
+            SELECT id, full_name, email, phone, job_title, status, created_at
+              FROM users
+             WHERE role = 'admin'
+             ORDER BY id DESC
+            """
+        ).fetchall()
+    return render_template(
+        "dev.html",
+        admins=admins,
+        message=message,
+        error=error,
+    )
+
+
+@app.get("/dev")
+def dev_page():
+    return dev_admins_payload()
+
+
+@app.post("/dev/admins")
+def create_dev_admin():
+    full_name = (request.form.get("fullName") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    password = request.form.get("password") or "Temp1234"
+    phone = (request.form.get("phone") or "").strip()
+    company_name = (request.form.get("companyName") or "").strip()
+    if not full_name or not email or not password:
+        return dev_admins_payload(error="الاسم والبريد وكلمة المرور مطلوبة"), 400
+    with db_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM users WHERE email = %s",
+            (email,),
+        ).fetchone()
+        if existing is not None:
+            return dev_admins_payload(error="هذا البريد مستخدم مسبقا"), 409
+        conn.execute(
+            """
+            INSERT INTO users
+              (full_name, email, password_hash, phone, job_title, role, status)
+            VALUES (%s, %s, %s, %s, %s, 'admin', 'approved')
+            """,
+            (
+                full_name,
+                email,
+                generate_password_hash(password),
+                phone,
+                company_name,
+            ),
+        )
+    return dev_admins_payload(message="تمت إضافة مدير الشركة")
+
+
+@app.post("/dev/admins/<int:user_id>/freeze")
+def freeze_dev_admin(user_id):
+    with db_conn() as conn:
+        conn.execute(
+            "UPDATE users SET status = 'frozen' WHERE id = %s AND role = 'admin'",
+            (user_id,),
+        )
+    return dev_admins_payload(message="تم تجميد الحساب")
+
+
+@app.post("/dev/admins/<int:user_id>/activate")
+def activate_dev_admin(user_id):
+    with db_conn() as conn:
+        conn.execute(
+            "UPDATE users SET status = 'approved' WHERE id = %s AND role = 'admin'",
+            (user_id,),
+        )
+    return dev_admins_payload(message="تم تفعيل الحساب")
+
+
+@app.post("/dev/admins/<int:user_id>/delete")
+def delete_dev_admin(user_id):
+    with db_conn() as conn:
+        conn.execute(
+            "DELETE FROM users WHERE id = %s AND role = 'admin'",
+            (user_id,),
+        )
+    return dev_admins_payload(message="تم حذف الحساب")
+
+
 @app.get("/health/db")
 def health_db():
     try:
