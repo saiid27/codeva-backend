@@ -54,6 +54,7 @@ DB_INITIALIZED = False
 PAGES_DIR = os.path.join(os.path.dirname(__file__), "static", "pages")
 DEV_EMAIL = os.getenv("DEV_EMAIL", "codeva@gmail.com")
 DEV_PASSWORD = os.getenv("DEV_PASSWORD", "codeva123")
+MANAGER_ROLES = {"admin", "manager", "company_manager", "company_admin"}
 
 
 def database_connect_attempts():
@@ -149,6 +150,10 @@ def password_matches(stored_hash, password):
         return check_password_hash(stored_hash, password)
     except ValueError:
         return False
+
+
+def user_is_manager(user):
+    return (user.get("role") or "").strip().lower() in MANAGER_ROLES
 
 
 def smtp_configured():
@@ -1025,7 +1030,7 @@ def login():
         if is_form_request:
             return redirect(url_for("dev_page"))
         return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("dev_page")})
-    if user["role"] == "admin":
+    if user_is_manager(user):
         session["manager_authenticated"] = True
         session["manager_email"] = user["email"]
         if is_form_request:
