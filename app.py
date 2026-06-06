@@ -158,6 +158,7 @@ def user_payload(user):
         "jobTitle": user.get("job_title") or "",
         "role": user["role"],
         "status": user["status"],
+        "managerEmail": user.get("manager_email") or "",
     }
 
 
@@ -173,6 +174,7 @@ def init_db():
       job_title TEXT DEFAULT '',
       role TEXT NOT NULL DEFAULT 'worker',
       status TEXT NOT NULL DEFAULT 'pending',
+      manager_email TEXT DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
     """,
@@ -221,6 +223,7 @@ def init_db():
     with db_conn() as conn:
         for statement in schema_statements:
             conn.execute(statement)
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_email TEXT DEFAULT ''")
         admin = conn.execute(
             "SELECT id FROM users WHERE email = %s",
             ("admin@gmail.com",),
@@ -377,6 +380,7 @@ def ensure_database_ready():
         "delete_dev_admin",
         "manager_page",
         "manager_workers",
+        "create_manager_worker",
         "manager_attendance",
         "manager_weekly_report",
         "manager_logout",
@@ -500,6 +504,10 @@ def manager_workers():
     auth = require_manager_login()
     if auth:
         return auth
+    return manager_workers_payload()
+
+
+def manager_workers_payload(message=None, error=None):
     ensure_database_initialized()
     with db_conn() as conn:
         workers = conn.execute(
@@ -507,10 +515,65 @@ def manager_workers():
             SELECT id, full_name, email, phone, job_title, status, created_at
               FROM users
              WHERE role = 'worker'
+               AND manager_email = %s
              ORDER BY lower(full_name), id DESC
-            """
+            """,
+            (session.get("manager_email"),),
         ).fetchall()
-    return render_template("manager_workers.html", workers=workers)
+    return render_template(
+        "manager_workers.html",
+        workers=workers,
+        message=message,
+        error=error,
+    )
+
+
+@app.post("/manager/workers")
+def create_manager_worker():
+    auth = require_manager_login()
+    if auth:
+        return auth
+    ensure_database_initialized()
+    full_name = (request.form.get("fullName") or "").strip()
+    phone = (request.form.get("phone") or "").strip()
+    password = request.form.get("password") or "1234"
+    job_title = (request.form.get("jobTitle") or "").strip()
+    manager_email = session.get("manager_email") or ""
+    if not full_name or not phone or not password:
+        return manager_workers_payload(error="اسم العامل والرقم وكلمة المرور مطلوبة"), 400
+    safe_phone = "".join(ch for ch in phone if ch.isalnum())
+    if not safe_phone:
+        return manager_workers_payload(error="رقم العامل غير صالح"), 400
+    worker_email = f"{safe_phone}@workers.codeva.local"
+    with db_conn() as conn:
+        existing_phone = conn.execute(
+            "SELECT id FROM users WHERE phone = %s",
+            (phone,),
+        ).fetchone()
+        if existing_phone is not None:
+            return manager_workers_payload(error="هذا الرقم مستخدم مسبقا"), 409
+        existing_email = conn.execute(
+            "SELECT id FROM users WHERE email = %s",
+            (worker_email,),
+        ).fetchone()
+        if existing_email is not None:
+            return manager_workers_payload(error="تعذر إنشاء حساب داخلي لهذا الرقم"), 409
+        conn.execute(
+            """
+            INSERT INTO users
+              (full_name, email, password_hash, phone, job_title, role, status, manager_email)
+            VALUES (%s, %s, %s, %s, %s, 'worker', 'approved', %s)
+            """,
+            (
+                full_name,
+                worker_email,
+                generate_password_hash(password),
+                phone,
+                job_title,
+                manager_email,
+            ),
+        )
+    return manager_workers_payload(message="تمت إضافة العامل")
 
 
 @app.get("/manager/attendance")
@@ -530,13 +593,14 @@ def manager_attendance():
                    COALESCE(a.status, 'absent') AS status,
                    a.time
               FROM users u
-              LEFT JOIN attendance a
+             LEFT JOIN attendance a
                 ON a.user_id = u.id
                AND a.attend_date = %s
              WHERE u.role = 'worker'
+               AND u.manager_email = %s
              ORDER BY lower(u.full_name), u.id DESC
             """,
-            (date,),
+            (date, session.get("manager_email")),
         ).fetchall()
     present_count = sum(1 for item in items if item["status"] == "present")
     absent_count = len(items) - present_count
@@ -568,14 +632,15 @@ def manager_weekly_report():
                    u.job_title,
                    COALESCE(SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END), 0)::int AS present
               FROM users u
-              LEFT JOIN attendance a
+             LEFT JOIN attendance a
                 ON a.user_id = u.id
                AND a.attend_date BETWEEN %s AND %s
              WHERE u.role = 'worker'
+               AND u.manager_email = %s
              GROUP BY u.id
              ORDER BY lower(u.full_name), u.id DESC
             """,
-            (start, end),
+            (start, end, session.get("manager_email")),
         ).fetchall()
     report = [
         {
@@ -882,7 +947,16 @@ def login():
     email = (data.get("email") or "").strip()
     password = data.get("password") or ""
     with db_conn() as conn:
-        user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
+        user = conn.execute(
+            """
+            SELECT *
+              FROM users
+             WHERE email = %s OR phone = %s
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (email, email),
+        ).fetchone()
     if user is None:
         if is_form_request:
             return login_result_page("بيانات الدخول غير صحيحة", ok=False), 404
