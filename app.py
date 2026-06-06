@@ -255,7 +255,7 @@ def init_db():
                 """
                 INSERT INTO users
                   (full_name, email, password_hash, phone, job_title, role, status)
-                VALUES (%s, %s, %s, %s, %s, 'developer', 'approved')
+                VALUES (%s, %s, %s, %s, %s, 'admin', 'approved')
                 """,
                 ("CODEVA Developer", DEV_EMAIL, dev_password, "", "Developer"),
             )
@@ -264,7 +264,7 @@ def init_db():
                 """
                 UPDATE users
                    SET password_hash = %s,
-                       role = 'developer',
+                       role = 'admin',
                        status = 'approved',
                        full_name = COALESCE(NULLIF(full_name, ''), 'CODEVA Developer'),
                        job_title = COALESCE(NULLIF(job_title, ''), 'Developer')
@@ -448,7 +448,7 @@ def dev_login_submit():
         ).fetchone()
     if (
         user is not None
-        and user["role"] == "developer"
+        and user["email"] == DEV_EMAIL
         and user["status"] == "approved"
         and password_matches(user["password_hash"], password)
     ):
@@ -473,8 +473,10 @@ def dev_admins_payload(message=None, error=None):
             SELECT id, full_name, email, phone, job_title, status, created_at
               FROM users
              WHERE role = 'admin'
+               AND email <> %s
              ORDER BY id DESC
-            """
+            """,
+            (DEV_EMAIL,),
         ).fetchall()
     return render_template(
         "dev.html",
@@ -505,6 +507,8 @@ def create_dev_admin():
     company_name = (request.form.get("companyName") or "").strip()
     if not full_name or not email or not password:
         return dev_admins_payload(error="الاسم والبريد وكلمة المرور مطلوبة"), 400
+    if email == DEV_EMAIL:
+        return dev_admins_payload(error="هذا البريد محجوز لحساب المطور"), 400
     with db_conn() as conn:
         existing = conn.execute(
             "SELECT id FROM users WHERE email = %s",
@@ -761,7 +765,7 @@ def login():
             return login_result_page("بيانات الدخول غير صحيحة", ok=False), 401
         return jsonify({"ok": False, "reason": "invalid"}), 401
     if is_form_request:
-        if user["role"] == "developer":
+        if user["email"] == DEV_EMAIL:
             session["dev_authenticated"] = True
             session["dev_email"] = user["email"]
             return redirect(url_for("dev_page"))
