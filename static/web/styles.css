@@ -44,6 +44,52 @@ body::after {
   justify-content: center;
 }
 
+.lang-toggle {
+  display: none;
+}
+
+.language-switch {
+  width: fit-content;
+  margin: 0 auto 22px;
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .14);
+}
+
+.language-switch label {
+  min-width: 46px;
+  min-height: 30px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, .78);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#lang-ar:checked ~ .language-switch label[for="lang-ar"],
+#lang-fr:checked ~ .language-switch label[for="lang-fr"],
+#lang-en:checked ~ .language-switch label[for="lang-en"] {
+  color: var(--green-dark);
+  background: var(--white);
+}
+
+.lang-panel {
+  display: none;
+}
+
+#lang-ar:checked ~ .lang-panels .lang-ar,
+#lang-fr:checked ~ .lang-panels .lang-fr,
+#lang-en:checked ~ .lang-panels .lang-en {
+  display: block;
+}
+
 .login-header {
   text-align: center;
   margin-bottom: 34px;
@@ -117,14 +163,6 @@ button {
   font: inherit;
   font-weight: 800;
   cursor: pointer;
-}
-
-.helper {
-  margin: 14px 0 0;
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.7;
 }
 
 .footer-links {

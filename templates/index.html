@@ -3,37 +3,95 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>تسجيل الدخول - CODEVA Presence</title>
+    <title>CODEVA Presence - Login</title>
     <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
   </head>
   <body>
     <main class="login-page">
-      <section class="login-header">
-        <span class="brand-mark">CODEVA</span>
-        <h1>تسجيل الدخول</h1>
-        <p>نظام حضور العمال عبر QR و GPS</p>
-      </section>
+      <input class="lang-toggle" id="lang-ar" name="language" type="radio" checked>
+      <input class="lang-toggle" id="lang-fr" name="language" type="radio">
+      <input class="lang-toggle" id="lang-en" name="language" type="radio">
 
-      <form class="login-card" action="/auth/login" method="post">
-        <label for="email">البريد الإلكتروني</label>
-        <input id="email" name="email" type="email" autocomplete="email" placeholder="admin@gmail.com" required>
+      <div class="language-switch" aria-label="Language">
+        <label for="lang-ar">AR</label>
+        <label for="lang-fr">FR</label>
+        <label for="lang-en">EN</label>
+      </div>
 
-        <label for="password">كلمة المرور</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+      <div class="lang-panels">
+        <section class="lang-panel lang-ar" lang="ar" dir="rtl">
+          <div class="login-header">
+            <span class="brand-mark">CODEVA</span>
+            <h1>تسجيل الدخول</h1>
+            <p>نظام حضور العمال عبر QR و GPS</p>
+          </div>
 
-        <button type="submit">دخول</button>
+          <form class="login-card" action="/auth/login" method="post">
+            <label for="email-ar">البريد الإلكتروني</label>
+            <input id="email-ar" name="email" type="email" autocomplete="email" placeholder="admin@gmail.com" required>
 
-        <p class="helper">
-          المدير هو من يضيف حسابات العمال داخل النظام.
-        </p>
-      </form>
+            <label for="password-ar">كلمة المرور</label>
+            <input id="password-ar" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
 
-      <nav class="footer-links" aria-label="روابط مساعدة">
-        <a href="/about">من نحن</a>
-        <a href="/contact">تواصل معنا</a>
-        <a href="/privacy">الخصوصية</a>
-      </nav>
+            <button type="submit">دخول</button>
+          </form>
+
+          <nav class="footer-links" aria-label="روابط مساعدة">
+            <a href="/about">من نحن</a>
+            <a href="/contact">تواصل معنا</a>
+            <a href="/privacy">الخصوصية</a>
+          </nav>
+        </section>
+
+        <section class="lang-panel lang-fr" lang="fr" dir="ltr">
+          <div class="login-header">
+            <span class="brand-mark">CODEVA</span>
+            <h1>Connexion</h1>
+            <p>Systeme de presence par QR et GPS</p>
+          </div>
+
+          <form class="login-card" action="/auth/login" method="post">
+            <label for="email-fr">Email</label>
+            <input id="email-fr" name="email" type="email" autocomplete="email" placeholder="admin@gmail.com" required>
+
+            <label for="password-fr">Mot de passe</label>
+            <input id="password-fr" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+
+            <button type="submit">Connexion</button>
+          </form>
+
+          <nav class="footer-links" aria-label="Liens utiles">
+            <a href="/about">A propos</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Confidentialite</a>
+          </nav>
+        </section>
+
+        <section class="lang-panel lang-en" lang="en" dir="ltr">
+          <div class="login-header">
+            <span class="brand-mark">CODEVA</span>
+            <h1>Login</h1>
+            <p>Attendance system with QR and GPS</p>
+          </div>
+
+          <form class="login-card" action="/auth/login" method="post">
+            <label for="email-en">Email</label>
+            <input id="email-en" name="email" type="email" autocomplete="email" placeholder="admin@gmail.com" required>
+
+            <label for="password-en">Password</label>
+            <input id="password-en" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+
+            <button type="submit">Login</button>
+          </form>
+
+          <nav class="footer-links" aria-label="Helpful links">
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Privacy</a>
+          </nav>
+        </section>
+      </div>
     </main>
   </body>
 </html>
