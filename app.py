@@ -1019,15 +1019,19 @@ def login():
         if is_form_request:
             return login_result_page("بيانات الدخول غير صحيحة", ok=False), 401
         return jsonify({"ok": False, "reason": "invalid"}), 401
-    if is_form_request:
-        if user["email"] == DEV_EMAIL:
-            session["dev_authenticated"] = True
-            session["dev_email"] = user["email"]
+    if user["email"] == DEV_EMAIL:
+        session["dev_authenticated"] = True
+        session["dev_email"] = user["email"]
+        if is_form_request:
             return redirect(url_for("dev_page"))
-        if user["role"] == "admin":
-            session["manager_authenticated"] = True
-            session["manager_email"] = user["email"]
+        return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("dev_page")})
+    if user["role"] == "admin":
+        session["manager_authenticated"] = True
+        session["manager_email"] = user["email"]
+        if is_form_request:
             return redirect(url_for("manager_page"))
+        return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("manager_page")})
+    if is_form_request:
         return login_result_page(
             f"تم تسجيل الدخول بنجاح: {user['full_name']} ({user['role']})",
             ok=True,
