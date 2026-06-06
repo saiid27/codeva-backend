@@ -65,6 +65,10 @@ def database_connect_attempts():
     attempts = [(DATABASE_URL, dict(base_kwargs))]
 
     if not has_sslmode and host not in {"localhost", "127.0.0.1", "::1"}:
+        disable_kwargs = dict(base_kwargs)
+        disable_kwargs["sslmode"] = "disable"
+        attempts.append((DATABASE_URL, disable_kwargs))
+
         require_kwargs = dict(base_kwargs)
         require_kwargs["sslmode"] = "require"
         attempts.append((DATABASE_URL, require_kwargs))
