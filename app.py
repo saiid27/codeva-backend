@@ -245,6 +245,34 @@ def init_db():
                 (admin_password,),
             )
 
+        dev_password = generate_password_hash(DEV_PASSWORD)
+        dev_user = conn.execute(
+            "SELECT id FROM users WHERE email = %s",
+            (DEV_EMAIL,),
+        ).fetchone()
+        if dev_user is None:
+            conn.execute(
+                """
+                INSERT INTO users
+                  (full_name, email, password_hash, phone, job_title, role, status)
+                VALUES (%s, %s, %s, %s, %s, 'developer', 'approved')
+                """,
+                ("CODEVA Developer", DEV_EMAIL, dev_password, "", "Developer"),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE users
+                   SET password_hash = %s,
+                       role = 'developer',
+                       status = 'approved',
+                       full_name = COALESCE(NULLIF(full_name, ''), 'CODEVA Developer'),
+                       job_title = COALESCE(NULLIF(job_title, ''), 'Developer')
+                 WHERE email = %s
+                """,
+                (dev_password, DEV_EMAIL),
+            )
+
         count = conn.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"]
         if count <= 1:
             demo_password = generate_password_hash("1234")
@@ -412,8 +440,20 @@ def dev_login_page():
 def dev_login_submit():
     email = (request.form.get("email") or "").strip()
     password = request.form.get("password") or ""
-    if email == DEV_EMAIL and password == DEV_PASSWORD:
+    ensure_database_initialized()
+    with db_conn() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE email = %s",
+            (email,),
+        ).fetchone()
+    if (
+        user is not None
+        and user["role"] == "developer"
+        and user["status"] == "approved"
+        and password_matches(user["password_hash"], password)
+    ):
         session["dev_authenticated"] = True
+        session["dev_email"] = user["email"]
         return redirect(url_for("dev_page"))
     return render_template("dev_login.html", error="بيانات الدخول غير صحيحة"), 401
 
@@ -421,6 +461,7 @@ def dev_login_submit():
 @app.post("/dev/logout")
 def dev_logout():
     session.pop("dev_authenticated", None)
+    session.pop("dev_email", None)
     return redirect(url_for("dev_login_page"))
 
 
