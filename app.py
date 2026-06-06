@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from math import asin, cos, radians, sin, sqrt
 
 import psycopg
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS
 from psycopg.rows import dict_row
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -318,7 +318,17 @@ def get_company_location(conn):
 @app.before_request
 def ensure_database_ready():
     global DB_INITIALIZED
-    if DB_INITIALIZED or request.endpoint in {"health", "health_db", "setup_init_db"}:
+    if DB_INITIALIZED or request.endpoint in {
+        "health",
+        "health_db",
+        "setup_init_db",
+        "static",
+        "web_app",
+        "contact_page",
+        "about_page",
+        "privacy_page",
+        "delete_account_page",
+    }:
         return
     init_db()
     DB_INITIALIZED = True
@@ -327,6 +337,12 @@ def ensure_database_ready():
 @app.get("/health")
 def health():
     return jsonify({"ok": True})
+
+
+@app.get("/")
+@app.get("/web")
+def web_app():
+    return render_template("index.html")
 
 
 @app.get("/contact")
