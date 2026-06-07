@@ -181,6 +181,23 @@ button {
   font-weight: 700;
 }
 
+.install-app-button {
+  margin-top: 16px;
+  color: var(--green-dark);
+  background: var(--white);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .16);
+}
+
+.install-app-message {
+  min-height: 18px;
+  margin: 10px 0 0;
+  color: #255b48;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .dev-body {
   color: #172033;
   background: #f4f7f6;
