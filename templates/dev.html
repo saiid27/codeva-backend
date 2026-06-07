@@ -6,23 +6,23 @@
     <title>Dev - CODEVA Presence</title>
     <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='web/icon-192.png') ~ '?v=20260607-6' }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='web/icon-192.png') ~ '?v=20260607-7' }}">
     <meta name="theme-color" content="#2f6e5a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="CODEVA Presence">
-    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') ~ '?v=20260607-6' }}">
-    <script src="{{ url_for('static', filename='web/pwa.js') ~ '?v=20260607-6' }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') ~ '?v=20260607-7' }}">
+    <script src="{{ url_for('static', filename='web/pwa.js') ~ '?v=20260607-7' }}" defer></script>
   </head>
   <body class="dev-body">
     <main class="dev-page">
-      <header class="dev-header">
+      <header class="dev-header dev-header-with-actions">
         <div>
           <span class="brand-mark">CODEVA Presence</span>
           <h1>صفحة المطور</h1>
           <p>إضافة وتجميد وحذف حسابات مدراء الشركات.</p>
         </div>
         <div class="dev-header-actions">
-          <a class="dev-link" href="/web">صفحة الدخول</a>
+          <a class="dev-link" href="/web">رجوع</a>
           <form action="/dev/logout" method="post">
             <button class="dev-link logout-button" type="submit">خروج</button>
           </form>
