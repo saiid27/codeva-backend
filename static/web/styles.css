@@ -186,7 +186,7 @@ button {
   right: 10px;
   top: 14px;
   z-index: 20;
-  width: 42px;
+  width: 86px;
 }
 
 .floating-install-button {
@@ -226,6 +226,26 @@ button {
 #lang-fr:checked ~ .floating-install-wrap .install-label-fr,
 #lang-en:checked ~ .floating-install-wrap .install-label-en {
   display: none;
+}
+
+.install-caption {
+  display: none;
+  margin: 5px 0 0;
+  padding: 4px 5px;
+  border-radius: 7px;
+  color: var(--green-dark);
+  background: rgba(255, 255, 255, .96);
+  text-align: center;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.25;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .14);
+}
+
+#lang-ar:checked ~ .floating-install-wrap .install-caption-ar,
+#lang-fr:checked ~ .floating-install-wrap .install-caption-fr,
+#lang-en:checked ~ .floating-install-wrap .install-caption-en {
+  display: block;
 }
 
 .install-app-message {
