@@ -797,7 +797,7 @@ button.danger {
     font-size: 13px;
   }
 
-  .dev-header form {
+  .dev-header > form {
     margin: 0;
     order: -1;
     position: absolute;
@@ -821,6 +821,12 @@ button.danger {
     flex-direction: row;
     justify-content: space-between;
     direction: ltr;
+  }
+
+  .dev-header-actions form {
+    position: static;
+    order: 0;
+    margin: 0;
   }
 
   .dev-header-actions .dev-link,
