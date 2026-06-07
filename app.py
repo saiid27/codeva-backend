@@ -122,6 +122,23 @@ def today_token():
     return datetime.now().strftime("%Y%m%d")
 
 
+def attendance_link():
+    return url_for("worker_checkin_page", token=today_token(), _external=True)
+
+
+def token_from_qr(value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        query = parse_qs(parsed.query)
+        if query.get("token"):
+            return query["token"][0].strip()
+        return parsed.path.rstrip("/").rsplit("/", 1)[-1].strip()
+    return value
+
+
 def today_date():
     return datetime.now().strftime("%Y-%m-%d")
 
@@ -440,7 +457,9 @@ def ensure_database_ready():
         "manager_weekly_report",
         "manager_logout",
         "worker_page",
+        "worker_checkin_page",
         "worker_logout",
+        "qr_today",
     }:
         return
     ensure_database_initialized()
@@ -581,6 +600,19 @@ def worker_page():
         return auth
     return render_template(
         "worker.html",
+        worker_email=session.get("worker_email"),
+        worker_name=session.get("worker_name"),
+    )
+
+
+@app.get("/worker/checkin")
+def worker_checkin_page():
+    if not worker_is_authenticated():
+        session["worker_next"] = request.full_path
+        return redirect(url_for("web_app"))
+    return render_template(
+        "worker_checkin.html",
+        token=token_from_qr(request.args.get("token")),
         worker_email=session.get("worker_email"),
         worker_name=session.get("worker_name"),
     )
@@ -1068,12 +1100,13 @@ def login():
         if is_form_request:
             return redirect(url_for("manager_page"))
         return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("manager_page")})
+    session["worker_authenticated"] = True
+    session["worker_email"] = user["email"]
+    session["worker_name"] = user["full_name"]
     if is_form_request:
-        session["worker_authenticated"] = True
-        session["worker_email"] = user["email"]
-        session["worker_name"] = user["full_name"]
-        return redirect(url_for("worker_page"))
-    return jsonify({"ok": True, "user": user_payload(user)})
+        next_url = session.pop("worker_next", None)
+        return redirect(next_url or url_for("worker_page"))
+    return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("worker_page")})
 
 
 def login_result_page(message, ok):
@@ -1159,7 +1192,7 @@ def reset_password():
 def scan_attendance():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip()
-    token = (data.get("token") or "").strip()
+    token = token_from_qr(data.get("token"))
     with db_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
         if user is None:
@@ -1192,15 +1225,9 @@ def scan_attendance():
     return jsonify({"ok": True, "already": False})
 
 
-@app.post("/attendance/location")
-def location_attendance():
-    data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip()
-    try:
-        latitude = float(data.get("latitude"))
-        longitude = float(data.get("longitude"))
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "reason": "invalid_location"}), 400
+def record_location_attendance(email, latitude, longitude, token=None):
+    if token is not None and token_from_qr(token) != today_token():
+        return jsonify({"ok": False, "reason": "invalid_qr"}), 400
     with db_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
         if user is None:
@@ -1215,10 +1242,10 @@ def location_attendance():
             longitude,
         )
         verified = distance_m <= company["radiusMeters"]
-        reason = "verified" if verified else "outside_area"
+        reason = "qr_gps" if token is not None and verified else "verified" if verified else "outside_area"
         date = today_date()
         existing = conn.execute(
-            "SELECT id FROM attendance WHERE user_id = %s AND attend_date = %s",
+            "SELECT id, status FROM attendance WHERE user_id = %s AND attend_date = %s",
             (user["id"], date),
         ).fetchone()
         if existing is not None:
@@ -1229,6 +1256,7 @@ def location_attendance():
                     "verified": verified,
                     "distanceMeters": distance_m,
                     "allowedRadiusMeters": company["radiusMeters"],
+                    "status": existing["status"],
                 }
             )
         conn.execute(
@@ -1258,6 +1286,31 @@ def location_attendance():
             "reason": reason,
         }
     )
+
+
+@app.post("/attendance/gps-qr")
+def gps_qr_attendance():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or session.get("worker_email") or "").strip()
+    token = data.get("token")
+    try:
+        latitude = float(data.get("latitude"))
+        longitude = float(data.get("longitude"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "reason": "invalid_location"}), 400
+    return record_location_attendance(email, latitude, longitude, token=token)
+
+
+@app.post("/attendance/location")
+def location_attendance():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    try:
+        latitude = float(data.get("latitude"))
+        longitude = float(data.get("longitude"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "reason": "invalid_location"}), 400
+    return record_location_attendance(email, latitude, longitude)
 
 
 @app.get("/attendance/list")
@@ -1341,7 +1394,7 @@ def reject_user(user_id):
 
 @app.get("/qr/today")
 def qr_today():
-    return jsonify({"token": today_token()})
+    return jsonify({"token": today_token(), "url": attendance_link()})
 
 
 @app.get("/company-location")

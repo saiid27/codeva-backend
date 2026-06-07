@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>تسجيل الحضور - CODEVA Presence</title>
+    <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page worker-page" data-worker-email="{{ worker_email }}" data-token="{{ token }}">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>تسجيل الحضور</h1>
+          <p>{{ worker_name or worker_email }}</p>
+        </div>
+        <a class="dev-link" href="/worker">رجوع</a>
+      </header>
+
+      <section class="worker-hero checkin-panel">
+        <h2>التحقق من QR و GPS</h2>
+        <p id="checkinStatus">جاري طلب موقعك لتسجيل الحضور.</p>
+        <button class="worker-action primary single-action" id="retryButton" type="button">
+          <span class="tile-icon">⌖</span>
+          <span>
+            <strong>تسجيل الحضور الآن</strong>
+            <small>اسمح للموقع حتى يتم تسجيل الحضور مع الوقت</small>
+          </span>
+        </button>
+      </section>
+    </main>
+
+    <script>
+      const page = document.querySelector(".worker-page");
+      const email = page.dataset.workerEmail;
+      const token = page.dataset.token;
+      const statusBox = document.getElementById("checkinStatus");
+      const retryButton = document.getElementById("retryButton");
+
+      function setStatus(message, type = "") {
+        statusBox.textContent = message;
+        statusBox.className = type;
+      }
+
+      function currentPosition() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("gps"));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 20000,
+          });
+        });
+      }
+
+      async function postJson(path, body) {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw data;
+        return data;
+      }
+
+      async function checkIn() {
+        if (!token) {
+          setStatus("رابط QR غير صالح.", "error");
+          return;
+        }
+        setStatus("جاري تحديد موقعك...");
+        try {
+          const position = await currentPosition();
+          const data = await postJson("/attendance/gps-qr", {
+            email,
+            token,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          if (data.already) {
+            setStatus("تم تسجيل حضورك مسبقا اليوم.", "ok");
+          } else if (data.verified) {
+            setStatus("تم تسجيل حضورك مع الوقت بنجاح.", "ok");
+          } else {
+            setStatus("موقعك خارج نطاق الشركة.", "error");
+          }
+        } catch (error) {
+          setStatus("تعذر تسجيل الحضور. تأكد من السماح بالموقع وصحة QR.", "error");
+        }
+      }
+
+      retryButton.addEventListener("click", checkIn);
+      checkIn();
+    </script>
+  </body>
+</html>

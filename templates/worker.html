@@ -28,14 +28,14 @@
             <span class="tile-icon">⌖</span>
             <span>
               <strong>تسجيل عبر GPS</strong>
-              <small>يتحقق من وجودك في نطاق الشركة</small>
+              <small>امسح QR ثم يتم التحقق من موقعك</small>
             </span>
           </button>
           <button class="worker-action" id="qrButton" type="button">
             <span class="tile-icon">▦</span>
             <span>
               <strong>سكان QR code</strong>
-              <small>يفتح الكاميرا لقراءة كود اليوم</small>
+              <small>QR عبارة عن رابط تسجيل الحضور</small>
             </span>
           </button>
         </div>
@@ -49,8 +49,8 @@
         <video id="qrVideo" playsinline muted></video>
         <div class="manual-token" id="manualToken">
           <div class="form-field">
-            <label for="tokenInput">كود QR</label>
-            <input id="tokenInput" type="text" inputmode="numeric" placeholder="مثال: 20260607">
+            <label for="tokenInput">رابط أو كود QR</label>
+            <input id="tokenInput" type="text" inputmode="url" placeholder="https://.../worker/checkin?token=20260607">
           </div>
           <button class="form-submit" id="submitToken" type="button">تأكيد الكود</button>
         </div>
@@ -90,46 +90,43 @@
         return data;
       }
 
-      gpsButton.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-          setStatus("المتصفح لا يدعم GPS.", "error");
-          return;
-        }
-        setStatus("جاري تحديد موقعك...");
-        navigator.geolocation.getCurrentPosition(async (position) => {
-          try {
-            const data = await postJson("/attendance/location", {
-              email,
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            });
-            if (data.already) {
-              setStatus("تم تسجيل حضورك مسبقا اليوم.", "ok");
-            } else if (data.verified) {
-              setStatus("تم تسجيل حضورك عبر GPS.", "ok");
-            } else {
-              setStatus("أنت خارج نطاق الشركة.", "error");
-            }
-          } catch (error) {
-            setStatus("تعذر تسجيل الحضور عبر GPS.", "error");
+      function currentPosition() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("gps"));
+            return;
           }
-        }, () => setStatus("يرجى السماح باستخدام الموقع.", "error"), {
-          enableHighAccuracy: true,
-          timeout: 20000,
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 20000,
+          });
         });
-      });
+      }
 
       async function submitQrToken(token) {
         if (!token) {
-          setStatus("أدخل كود QR أولا.", "error");
+          setStatus("أدخل رابط أو كود QR أولا.", "error");
           return;
         }
+        setStatus("تمت قراءة QR، جاري التحقق من موقعك...");
         try {
-          const data = await postJson("/attendance/scan", {email, token});
+          const position = await currentPosition();
+          const data = await postJson("/attendance/gps-qr", {
+            email,
+            token,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
           stopScanner();
-          setStatus(data.already ? "تم تسجيل حضورك مسبقا اليوم." : "تم تسجيل حضورك عبر QR.", "ok");
+          if (data.already) {
+            setStatus("تم تسجيل حضورك مسبقا اليوم.", "ok");
+          } else if (data.verified) {
+            setStatus("تم تسجيل حضورك مع الوقت عبر QR و GPS.", "ok");
+          } else {
+            setStatus("تمت قراءة QR لكن موقعك خارج نطاق الشركة.", "error");
+          }
         } catch (error) {
-          setStatus("كود QR غير صحيح.", "error");
+          setStatus("تعذر التسجيل. تأكد من QR والسماح بالموقع.", "error");
         }
       }
 
@@ -157,7 +154,7 @@
         requestAnimationFrame(() => scanLoop(detector));
       }
 
-      qrButton.addEventListener("click", async () => {
+      async function openScanner() {
         scannerCard.hidden = false;
         manualToken.hidden = false;
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -182,6 +179,16 @@
         } catch (error) {
           scannerHint.textContent = "تعذر فتح الكاميرا، أدخل الكود يدويا.";
         }
+      }
+
+      gpsButton.addEventListener("click", () => {
+        setStatus("امسح QR الخاص بالحضور ثم اسمح بتحديد الموقع.");
+        openScanner();
+      });
+
+      qrButton.addEventListener("click", () => {
+        setStatus("امسح رابط QR لتسجيل الحضور مع الموقع.");
+        openScanner();
       });
 
       submitToken.addEventListener("click", () => submitQrToken(tokenInput.value.trim()));

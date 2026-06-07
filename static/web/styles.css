@@ -527,6 +527,16 @@ button.danger {
   background: #0f766e;
 }
 
+.single-action {
+  margin-top: 18px;
+}
+
+.checkin-panel {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .worker-action strong,
 .worker-action small {
   display: block;
