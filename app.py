@@ -733,7 +733,9 @@ def manager_attendance():
                    u.email,
                    u.job_title,
                    COALESCE(a.status, 'absent') AS status,
-                   a.time
+                   COALESCE(a.time, to_char(a.created_at, 'HH24:MI')) AS attendance_time,
+                   a.verification_reason,
+                   a.distance_m
               FROM users u
              LEFT JOIN attendance a
                 ON a.user_id = u.id
@@ -1224,10 +1226,22 @@ def scan_attendance():
             return jsonify({"ok": False, "reason": user["status"]}), 403
         date = today_date()
         existing = conn.execute(
-            "SELECT id FROM attendance WHERE user_id = %s AND attend_date = %s",
+            "SELECT id, status, time FROM attendance WHERE user_id = %s AND attend_date = %s",
             (user["id"], date),
         ).fetchone()
         if existing is not None:
+            if token == today_token() and (existing["status"] != "present" or not existing["time"]):
+                conn.execute(
+                    """
+                    UPDATE attendance
+                       SET status = 'present',
+                           time = COALESCE(time, %s),
+                           verification_reason = 'qr'
+                     WHERE id = %s
+                    """,
+                    (now_time(), existing["id"]),
+                )
+                return jsonify({"ok": True, "already": False, "updated": True})
             return jsonify({"ok": True, "already": True})
         if token != today_token():
             conn.execute(
@@ -1268,10 +1282,43 @@ def record_location_attendance(email, latitude, longitude, token=None):
         reason = "qr_gps" if token is not None and verified else "verified" if verified else "outside_area"
         date = today_date()
         existing = conn.execute(
-            "SELECT id, status FROM attendance WHERE user_id = %s AND attend_date = %s",
+            "SELECT id, status, time FROM attendance WHERE user_id = %s AND attend_date = %s",
             (user["id"], date),
         ).fetchone()
         if existing is not None:
+            if verified and (existing["status"] != "present" or not existing["time"]):
+                attendance_time = now_time()
+                conn.execute(
+                    """
+                    UPDATE attendance
+                       SET status = 'present',
+                           time = COALESCE(time, %s),
+                           latitude = %s,
+                           longitude = %s,
+                           distance_m = %s,
+                           verification_reason = %s
+                     WHERE id = %s
+                    """,
+                    (
+                        attendance_time,
+                        latitude,
+                        longitude,
+                        distance_m,
+                        reason,
+                        existing["id"],
+                    ),
+                )
+                return jsonify(
+                    {
+                        "ok": True,
+                        "already": False,
+                        "updated": True,
+                        "verified": True,
+                        "distanceMeters": distance_m,
+                        "allowedRadiusMeters": company["radiusMeters"],
+                        "time": attendance_time,
+                    }
+                )
             return jsonify(
                 {
                     "ok": True,
@@ -1280,6 +1327,7 @@ def record_location_attendance(email, latitude, longitude, token=None):
                     "distanceMeters": distance_m,
                     "allowedRadiusMeters": company["radiusMeters"],
                     "status": existing["status"],
+                    "time": existing["time"],
                 }
             )
         conn.execute(
