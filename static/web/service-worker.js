@@ -1,11 +1,11 @@
-const CACHE_NAME = "codeva-presence-v4";
+const CACHE_NAME = "codeva-presence-v5";
 const APP_SHELL = [
   "/web",
-  "/static/web/styles.css?v=20260607-4",
-  "/static/web/pwa.js?v=20260607-4",
+  "/static/web/styles.css?v=20260607-5",
+  "/static/web/pwa.js?v=20260607-5",
   "/static/web/favicon.svg",
-  "/static/web/icon-192.png?v=20260607-4",
-  "/static/web/icon-512.png?v=20260607-4",
+  "/static/web/icon-192.png?v=20260607-5",
+  "/static/web/icon-512.png?v=20260607-5",
   "/manifest.webmanifest"
 ];
 
