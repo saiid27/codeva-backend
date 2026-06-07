@@ -439,6 +439,8 @@ def ensure_database_ready():
         "manager_attendance",
         "manager_weekly_report",
         "manager_logout",
+        "worker_page",
+        "worker_logout",
     }:
         return
     ensure_database_initialized()
@@ -533,8 +535,18 @@ def manager_is_authenticated():
     return session.get("manager_authenticated") is True
 
 
+def worker_is_authenticated():
+    return session.get("worker_authenticated") is True
+
+
 def require_manager_login():
     if manager_is_authenticated():
+        return None
+    return redirect(url_for("web_app"))
+
+
+def require_worker_login():
+    if worker_is_authenticated():
         return None
     return redirect(url_for("web_app"))
 
@@ -546,12 +558,32 @@ def manager_logout():
     return redirect(url_for("web_app"))
 
 
+@app.post("/worker/logout")
+def worker_logout():
+    session.pop("worker_authenticated", None)
+    session.pop("worker_email", None)
+    session.pop("worker_name", None)
+    return redirect(url_for("web_app"))
+
+
 @app.get("/manager")
 def manager_page():
     auth = require_manager_login()
     if auth:
         return auth
     return render_template("manager.html", manager_email=session.get("manager_email"))
+
+
+@app.get("/worker")
+def worker_page():
+    auth = require_worker_login()
+    if auth:
+        return auth
+    return render_template(
+        "worker.html",
+        worker_email=session.get("worker_email"),
+        worker_name=session.get("worker_name"),
+    )
 
 
 @app.get("/manager/workers")
@@ -1037,10 +1069,10 @@ def login():
             return redirect(url_for("manager_page"))
         return jsonify({"ok": True, "user": user_payload(user), "redirect": url_for("manager_page")})
     if is_form_request:
-        return login_result_page(
-            f"تم تسجيل الدخول بنجاح: {user['full_name']} ({user['role']})",
-            ok=True,
-        )
+        session["worker_authenticated"] = True
+        session["worker_email"] = user["email"]
+        session["worker_name"] = user["full_name"]
+        return redirect(url_for("worker_page"))
     return jsonify({"ok": True, "user": user_payload(user)})
 
 

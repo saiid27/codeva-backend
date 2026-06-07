@@ -472,6 +472,102 @@ button.danger {
   line-height: 1.5;
 }
 
+.worker-hero {
+  margin-top: 20px;
+  padding: 22px;
+  border-radius: 8px;
+  color: var(--white);
+  background: var(--green-dark);
+}
+
+.worker-hero h2 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.worker-hero p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, .82);
+}
+
+.worker-hero p.ok {
+  color: #bbf7d0;
+  font-weight: 800;
+}
+
+.worker-hero p.error {
+  color: #fecaca;
+  font-weight: 800;
+}
+
+.worker-action-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.worker-action {
+  width: 100%;
+  min-height: 112px;
+  margin: 0;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 8px;
+  color: var(--white);
+  background: rgba(255, 255, 255, .12);
+  text-align: start;
+}
+
+.worker-action.primary {
+  background: #0f766e;
+}
+
+.worker-action strong,
+.worker-action small {
+  display: block;
+}
+
+.worker-action strong {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.worker-action small {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, .82);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.scanner-card video {
+  width: 100%;
+  max-height: 420px;
+  display: block;
+  border-radius: 8px;
+  background: #172033;
+  object-fit: cover;
+  aspect-ratio: 16 / 10;
+}
+
+.manual-token {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 12px;
+  align-items: end;
+}
+
+.stop-camera {
+  width: fit-content;
+  margin-top: 14px;
+  background: #667085;
+}
+
 .tile-icon {
   width: 42px;
   height: 42px;
@@ -585,6 +681,8 @@ button.danger {
 
   .worker-form,
   .manager-grid,
+  .worker-action-grid,
+  .manual-token,
   .admin-row {
     grid-template-columns: 1fr;
   }
@@ -600,6 +698,23 @@ button.danger {
   }
 
   .form-submit {
+    width: 100%;
+  }
+
+  .worker-hero {
+    padding: 16px;
+  }
+
+  .worker-action {
+    min-height: 102px;
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .scanner-card video {
+    aspect-ratio: 3 / 4;
+  }
+
+  .stop-camera {
     width: 100%;
   }
 

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>صفحة العامل - CODEVA Presence</title>
+    <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+  </head>
+  <body class="dev-body">
+    <main class="dev-page worker-page" data-worker-email="{{ worker_email }}">
+      <header class="dev-header">
+        <div>
+          <span class="brand-mark">CODEVA Presence</span>
+          <h1>صفحة العامل</h1>
+          <p>{{ worker_name or worker_email }}</p>
+        </div>
+        <form action="/worker/logout" method="post">
+          <button class="dev-link logout-button" type="submit">خروج</button>
+        </form>
+      </header>
+
+      <section class="worker-hero">
+        <h2>تسجيل الحضور</h2>
+        <p id="workerStatus">اختر طريقة التحقق المناسبة.</p>
+        <div class="worker-action-grid">
+          <button class="worker-action primary" id="gpsButton" type="button">
+            <span class="tile-icon">⌖</span>
+            <span>
+              <strong>تسجيل عبر GPS</strong>
+              <small>يتحقق من وجودك في نطاق الشركة</small>
+            </span>
+          </button>
+          <button class="worker-action" id="qrButton" type="button">
+            <span class="tile-icon">▦</span>
+            <span>
+              <strong>سكان QR code</strong>
+              <small>يفتح الكاميرا لقراءة كود اليوم</small>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section class="dev-card scanner-card" id="scannerCard" hidden>
+        <div class="section-title">
+          <h2>الكاميرا</h2>
+          <p id="scannerHint">ضع QR code داخل إطار الكاميرا.</p>
+        </div>
+        <video id="qrVideo" playsinline muted></video>
+        <div class="manual-token" id="manualToken">
+          <div class="form-field">
+            <label for="tokenInput">كود QR</label>
+            <input id="tokenInput" type="text" inputmode="numeric" placeholder="مثال: 20260607">
+          </div>
+          <button class="form-submit" id="submitToken" type="button">تأكيد الكود</button>
+        </div>
+        <button class="dev-link stop-camera" id="stopCamera" type="button">إغلاق الكاميرا</button>
+      </section>
+    </main>
+
+    <script>
+      const page = document.querySelector(".worker-page");
+      const email = page.dataset.workerEmail;
+      const statusBox = document.getElementById("workerStatus");
+      const gpsButton = document.getElementById("gpsButton");
+      const qrButton = document.getElementById("qrButton");
+      const scannerCard = document.getElementById("scannerCard");
+      const scannerHint = document.getElementById("scannerHint");
+      const video = document.getElementById("qrVideo");
+      const manualToken = document.getElementById("manualToken");
+      const tokenInput = document.getElementById("tokenInput");
+      const submitToken = document.getElementById("submitToken");
+      const stopCamera = document.getElementById("stopCamera");
+      let stream = null;
+      let scanning = false;
+
+      function setStatus(message, type = "") {
+        statusBox.textContent = message;
+        statusBox.className = type;
+      }
+
+      async function postJson(path, body) {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw data;
+        return data;
+      }
+
+      gpsButton.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          setStatus("المتصفح لا يدعم GPS.", "error");
+          return;
+        }
+        setStatus("جاري تحديد موقعك...");
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          try {
+            const data = await postJson("/attendance/location", {
+              email,
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            if (data.already) {
+              setStatus("تم تسجيل حضورك مسبقا اليوم.", "ok");
+            } else if (data.verified) {
+              setStatus("تم تسجيل حضورك عبر GPS.", "ok");
+            } else {
+              setStatus("أنت خارج نطاق الشركة.", "error");
+            }
+          } catch (error) {
+            setStatus("تعذر تسجيل الحضور عبر GPS.", "error");
+          }
+        }, () => setStatus("يرجى السماح باستخدام الموقع.", "error"), {
+          enableHighAccuracy: true,
+          timeout: 20000,
+        });
+      });
+
+      async function submitQrToken(token) {
+        if (!token) {
+          setStatus("أدخل كود QR أولا.", "error");
+          return;
+        }
+        try {
+          const data = await postJson("/attendance/scan", {email, token});
+          stopScanner();
+          setStatus(data.already ? "تم تسجيل حضورك مسبقا اليوم." : "تم تسجيل حضورك عبر QR.", "ok");
+        } catch (error) {
+          setStatus("كود QR غير صحيح.", "error");
+        }
+      }
+
+      function stopScanner() {
+        scanning = false;
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+        }
+        video.srcObject = null;
+        scannerCard.hidden = true;
+      }
+
+      async function scanLoop(detector) {
+        if (!scanning) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length) {
+            await submitQrToken(codes[0].rawValue);
+            return;
+          }
+        } catch (error) {
+          scannerHint.textContent = "تعذر قراءة الكاميرا، يمكنك إدخال الكود يدويا.";
+        }
+        requestAnimationFrame(() => scanLoop(detector));
+      }
+
+      qrButton.addEventListener("click", async () => {
+        scannerCard.hidden = false;
+        manualToken.hidden = false;
+        if (!navigator.mediaDevices?.getUserMedia) {
+          scannerHint.textContent = "متصفحك لا يدعم فتح الكاميرا، أدخل الكود يدويا.";
+          return;
+        }
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {facingMode: {ideal: "environment"}},
+            audio: false,
+          });
+          video.srcObject = stream;
+          await video.play();
+          if (!("BarcodeDetector" in window)) {
+            scannerHint.textContent = "الكاميرا مفتوحة. إذا لم تتم القراءة تلقائيا، أدخل الكود يدويا.";
+            return;
+          }
+          const detector = new BarcodeDetector({formats: ["qr_code"]});
+          scanning = true;
+          scannerHint.textContent = "ضع QR code داخل إطار الكاميرا.";
+          scanLoop(detector);
+        } catch (error) {
+          scannerHint.textContent = "تعذر فتح الكاميرا، أدخل الكود يدويا.";
+        }
+      });
+
+      submitToken.addEventListener("click", () => submitQrToken(tokenInput.value.trim()));
+      stopCamera.addEventListener("click", stopScanner);
+    </script>
+  </body>
+</html>
