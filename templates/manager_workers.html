@@ -24,26 +24,41 @@
         <p class="notice error">{{ error }}</p>
       {% endif %}
 
-      <section class="dev-card">
-        <h2>إضافة عامل</h2>
-        <form class="dev-form" action="/manager/workers" method="post">
-          <label for="fullName">اسم العامل</label>
-          <input id="fullName" name="fullName" type="text" required>
+      <section class="dev-card manager-form-card">
+        <div class="section-title">
+          <h2>إضافة عامل</h2>
+          <p>سيستخدم العامل الرقم وكلمة المرور لتسجيل الدخول.</p>
+        </div>
+        <form class="worker-form" action="/manager/workers" method="post">
+          <div class="form-field">
+            <label for="fullName">اسم العامل</label>
+            <input id="fullName" name="fullName" type="text" autocomplete="name" required>
+          </div>
 
-          <label for="phone">رقم العامل</label>
-          <input id="phone" name="phone" type="text" inputmode="tel" required>
+          <div class="form-field">
+            <label for="phone">رقم الدخول</label>
+            <input id="phone" name="phone" type="text" inputmode="tel" autocomplete="tel" required>
+          </div>
 
-          <label for="jobTitle">الوظيفة</label>
-          <input id="jobTitle" name="jobTitle" type="text">
+          <div class="form-field">
+            <label for="jobTitle">الوظيفة</label>
+            <input id="jobTitle" name="jobTitle" type="text" autocomplete="organization-title">
+          </div>
 
-          <label for="password">كلمة المرور</label>
-          <input id="password" name="password" type="text" value="1234" required>
+          <div class="form-field">
+            <label for="password">كلمة المرور</label>
+            <input id="password" name="password" type="text" value="1234" required>
+          </div>
 
-          <button type="submit">إضافة العامل</button>
+          <button class="form-submit" type="submit">إضافة العامل</button>
         </form>
       </section>
 
       <section class="dev-card">
+        <div class="section-title">
+          <h2>قائمة العمال</h2>
+          <p>{{ workers|length }} حساب</p>
+        </div>
         <div class="admin-list">
           {% for worker in workers %}
             <article class="admin-row">
