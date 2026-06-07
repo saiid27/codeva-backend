@@ -576,28 +576,30 @@ button.danger {
 .worker-hero {
   margin-top: 20px;
   padding: 22px;
+  border: 1px solid #d8e7e1;
   border-radius: 8px;
-  color: var(--white);
-  background: var(--green-dark);
+  color: #172033;
+  background: #ffffff;
 }
 
 .worker-hero h2 {
   margin: 0;
+  color: var(--green-dark);
   font-size: 26px;
 }
 
 .worker-hero p {
   margin: 8px 0 0;
-  color: rgba(255, 255, 255, .82);
+  color: #667085;
 }
 
 .worker-hero p.ok {
-  color: #bbf7d0;
+  color: #166534;
   font-weight: 800;
 }
 
 .worker-hero p.error {
-  color: #fecaca;
+  color: #991b1b;
   font-weight: 800;
 }
 
@@ -617,15 +619,28 @@ button.danger {
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 14px;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, .22);
+  border: 1px solid #d8e7e1;
   border-radius: 8px;
-  color: var(--white);
-  background: rgba(255, 255, 255, .12);
+  color: #172033;
+  background: #f7fbf9;
   text-align: start;
 }
 
 .worker-action.primary {
+  color: #ffffff;
+  border-color: #0f766e;
   background: #0f766e;
+}
+
+.worker-action:not(.primary) {
+  color: #ffffff;
+  border-color: #6d28d9;
+  background: #6d28d9;
+}
+
+.worker-action .tile-icon {
+  color: var(--green-dark);
+  background: #ffffff;
 }
 
 .single-action {
@@ -636,6 +651,7 @@ button.danger {
   max-width: 680px;
   margin-left: auto;
   margin-right: auto;
+  box-shadow: 0 12px 28px rgba(15, 118, 110, .1);
 }
 
 .worker-action strong,
