@@ -183,19 +183,18 @@ button {
 
 .floating-install-wrap {
   position: fixed;
-  right: 6px;
-  top: 50%;
+  right: 10px;
+  top: 14px;
   z-index: 20;
-  width: 30px;
-  transform: translateY(-50%);
+  width: 42px;
 }
 
 .floating-install-button {
-  width: 30px;
-  min-height: 30px;
+  width: 42px;
+  min-height: 42px;
   height: auto;
   margin: 0;
-  padding: 3px;
+  padding: 4px;
   display: grid;
   place-items: center;
   gap: 0;
@@ -207,10 +206,10 @@ button {
 }
 
 .floating-install-button img {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   display: block;
-  border-radius: 5px;
+  border-radius: 7px;
 }
 
 .install-label {
