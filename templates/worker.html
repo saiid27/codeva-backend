@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="CODEVA Presence">
     <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') ~ '?v=20260607-10' }}">
+    <script src="{{ url_for('static', filename='web/jsqr.min.js') ~ '?v=1.4.0' }}" defer></script>
     <script src="{{ url_for('static', filename='web/pwa.js') ~ '?v=20260607-10' }}" defer></script>
   </head>
   <body class="dev-body">
@@ -146,18 +147,46 @@
         scannerCard.hidden = true;
       }
 
-      async function scanLoop(detector) {
+      function readQrWithCanvas(canvas, context) {
+        if (!window.jsQR || !video.videoWidth || !video.videoHeight) return null;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(frame.data, frame.width, frame.height, {
+          inversionAttempts: "dontInvert",
+        });
+        return code?.data || null;
+      }
+
+      async function scanLoop(detector, canvas, context) {
         if (!scanning) return;
         try {
-          const codes = await detector.detect(video);
-          if (codes.length) {
-            await submitQrToken(codes[0].rawValue);
-            return;
+          if (detector) {
+            const codes = await detector.detect(video);
+            if (codes.length) {
+              await submitQrToken(codes[0].rawValue);
+              return;
+            }
+          } else {
+            const value = readQrWithCanvas(canvas, context);
+            if (value) {
+              await submitQrToken(value);
+              return;
+            }
           }
         } catch (error) {
-          scannerHint.textContent = "تعذر قراءة الكاميرا، يمكنك إدخال الكود يدويا.";
+          try {
+            const value = readQrWithCanvas(canvas, context);
+            if (value) {
+              await submitQrToken(value);
+              return;
+            }
+          } catch (fallbackError) {
+            scannerHint.textContent = "تعذر قراءة الكاميرا، يمكنك إدخال الكود يدويا.";
+          }
         }
-        requestAnimationFrame(() => scanLoop(detector));
+        requestAnimationFrame(() => scanLoop(detector, canvas, context));
       }
 
       async function openScanner() {
@@ -174,14 +203,18 @@
           });
           video.srcObject = stream;
           await video.play();
-          if (!("BarcodeDetector" in window)) {
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d", {willReadFrequently: true});
+          let detector = null;
+          if ("BarcodeDetector" in window) {
+            detector = new BarcodeDetector({formats: ["qr_code"]});
+          } else if (!window.jsQR || !context) {
             scannerHint.textContent = "الكاميرا مفتوحة. إذا لم تتم القراءة تلقائيا، أدخل الكود يدويا.";
             return;
           }
-          const detector = new BarcodeDetector({formats: ["qr_code"]});
           scanning = true;
           scannerHint.textContent = "ضع QR code داخل إطار الكاميرا.";
-          scanLoop(detector);
+          scanLoop(detector, canvas, context);
         } catch (error) {
           scannerHint.textContent = "تعذر فتح الكاميرا، أدخل الكود يدويا.";
         }
