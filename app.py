@@ -460,6 +460,8 @@ def ensure_database_ready():
         "worker_checkin_page",
         "worker_logout",
         "qr_today",
+        "web_manifest",
+        "service_worker",
     }:
         return
     ensure_database_initialized()
@@ -502,6 +504,27 @@ def privacy_page():
 @app.get("/delete-account")
 def delete_account_page():
     return send_from_directory(PAGES_DIR, "delete-account.html")
+
+
+@app.get("/manifest.webmanifest")
+def web_manifest():
+    return send_from_directory(
+        os.path.join(os.path.dirname(__file__), "static", "web"),
+        "manifest.webmanifest",
+        mimetype="application/manifest+json",
+    )
+
+
+@app.get("/service-worker.js")
+def service_worker():
+    response = send_from_directory(
+        os.path.join(os.path.dirname(__file__), "static", "web"),
+        "service-worker.js",
+        mimetype="text/javascript",
+    )
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def dev_is_authenticated():

@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CODEVA Presence - Login</title>
     <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='web/icon-192.png') }}">
+    <meta name="theme-color" content="#2f6e5a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="CODEVA Presence">
     <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') }}">
+    <script src="{{ url_for('static', filename='web/pwa.js') }}" defer></script>
   </head>
   <body>
     <main class="login-page">
