@@ -42,8 +42,6 @@
             <a href="/contact">تواصل معنا</a>
             <a href="/privacy">الخصوصية</a>
           </nav>
-          <button class="install-app-button" type="button" data-install-app>تحميل التطبيق</button>
-          <p class="install-app-message" data-install-message aria-live="polite"></p>
         </section>
 
         <section class="lang-panel lang-fr" lang="fr" dir="ltr">
@@ -68,8 +66,6 @@
             <a href="/contact">Contact</a>
             <a href="/privacy">Confidentialite</a>
           </nav>
-          <button class="install-app-button" type="button" data-install-app>Installer l'application</button>
-          <p class="install-app-message" data-install-message aria-live="polite"></p>
         </section>
 
         <section class="lang-panel lang-en" lang="en" dir="ltr">
@@ -94,8 +90,6 @@
             <a href="/contact">Contact</a>
             <a href="/privacy">Privacy</a>
           </nav>
-          <button class="install-app-button" type="button" data-install-app>Install app</button>
-          <p class="install-app-message" data-install-message aria-live="polite"></p>
         </section>
       </div>
 
@@ -103,6 +97,15 @@
         <label for="lang-ar">AR</label>
         <label for="lang-fr">FR</label>
         <label for="lang-en">EN</label>
+      </div>
+      <div class="floating-install-wrap">
+        <button class="floating-install-button" type="button" data-install-app aria-label="تحميل التطبيق">
+          <img src="{{ url_for('static', filename='web/icon-192.png') }}" alt="">
+          <span class="install-label install-label-ar">تحميل التطبيق</span>
+          <span class="install-label install-label-fr">Installer</span>
+          <span class="install-label install-label-en">Install</span>
+        </button>
+        <p class="install-app-message floating-install-message" data-install-message aria-live="polite"></p>
       </div>
     </main>
   </body>
