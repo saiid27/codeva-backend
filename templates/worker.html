@@ -6,13 +6,13 @@
     <title>صفحة العامل - CODEVA Presence</title>
     <link rel="icon" href="{{ url_for('static', filename='web/favicon.svg') }}">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='web/icon-192.png') ~ '?v=20260607-10' }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='web/icon-192.png') ~ '?v=20260610-qr-direct' }}">
     <meta name="theme-color" content="#2f6e5a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="CODEVA Presence">
-    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') ~ '?v=20260607-10' }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='web/styles.css') ~ '?v=20260610-qr-direct' }}">
     <script src="{{ url_for('static', filename='web/jsqr.min.js') ~ '?v=1.4.0' }}" defer></script>
-    <script src="{{ url_for('static', filename='web/pwa.js') ~ '?v=20260607-10' }}" defer></script>
+    <script src="{{ url_for('static', filename='web/pwa.js') ~ '?v=20260610-qr-direct' }}" defer></script>
   </head>
   <body class="dev-body">
     <main class="dev-page worker-page" data-worker-email="{{ worker_email }}">
@@ -29,20 +29,20 @@
 
       <section class="worker-hero">
         <h2>تسجيل الحضور</h2>
-        <p id="workerStatus">اختر طريقة التحقق المناسبة.</p>
+        <p id="workerStatus">امسح QR الثابت لتسجيل الحضور.</p>
         <div class="worker-action-grid">
           <button class="worker-action primary" id="gpsButton" type="button">
-            <span class="tile-icon">⌖</span>
-            <span>
-              <strong>تسجيل عبر GPS</strong>
-              <small>امسح QR ثم يتم التحقق من موقعك</small>
-            </span>
-          </button>
-          <button class="worker-action" id="qrButton" type="button">
             <span class="tile-icon">▦</span>
             <span>
               <strong>سكان QR code</strong>
-              <small>QR عبارة عن رابط تسجيل الحضور</small>
+              <small>يسجل الحضور مباشرة بدون GPS</small>
+            </span>
+          </button>
+          <button class="worker-action" id="qrButton" type="button">
+            <span class="tile-icon">✓</span>
+            <span>
+              <strong>فتح رابط الحضور</strong>
+              <small>إذا كان QR محفوظا كرابط ثابت</small>
             </span>
           </button>
         </div>
@@ -57,7 +57,7 @@
         <div class="manual-token" id="manualToken">
           <div class="form-field">
             <label for="tokenInput">رابط أو كود QR</label>
-            <input id="tokenInput" type="text" inputmode="url" placeholder="https://.../worker/checkin?token=20260607">
+            <input id="tokenInput" type="text" inputmode="url" placeholder="https://codeva-backend-a2ny.onrender.com/worker/checkin">
           </div>
           <button class="form-submit" id="submitToken" type="button">تأكيد الكود</button>
         </div>
@@ -97,43 +97,25 @@
         return data;
       }
 
-      function currentPosition() {
-        return new Promise((resolve, reject) => {
-          if (!navigator.geolocation) {
-            reject(new Error("gps"));
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 20000,
-          });
-        });
-      }
-
       async function submitQrToken(token) {
         if (!token) {
           setStatus("أدخل رابط أو كود QR أولا.", "error");
           return;
         }
-        setStatus("تمت قراءة QR، جاري التحقق من موقعك...");
+        setStatus("تمت قراءة QR، جاري تسجيل الحضور...");
         try {
-          const position = await currentPosition();
-          const data = await postJson("/attendance/gps-qr", {
+          const data = await postJson("/attendance/scan", {
             email,
             token,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
           });
           stopScanner();
           if (data.already) {
             setStatus("تم تسجيل حضورك مسبقا اليوم.", "ok");
-          } else if (data.verified) {
-            setStatus("تم تسجيل حضورك مع الوقت عبر QR و GPS.", "ok");
           } else {
-            setStatus("تمت قراءة QR لكن موقعك خارج نطاق الشركة.", "error");
+            setStatus("تم تسجيل حضورك بنجاح.", "ok");
           }
         } catch (error) {
-          setStatus("تعذر التسجيل. تأكد من QR والسماح بالموقع.", "error");
+          setStatus("تعذر التسجيل. تأكد أن QR هو رابط الحضور الثابت.", "error");
         }
       }
 
@@ -221,13 +203,12 @@
       }
 
       gpsButton.addEventListener("click", () => {
-        setStatus("امسح QR الخاص بالحضور ثم اسمح بتحديد الموقع.");
+        setStatus("امسح QR الثابت لتسجيل الحضور.");
         openScanner();
       });
 
       qrButton.addEventListener("click", () => {
-        setStatus("امسح رابط QR لتسجيل الحضور مع الموقع.");
-        openScanner();
+        window.location.href = "/worker/checkin";
       });
 
       submitToken.addEventListener("click", () => submitQrToken(tokenInput.value.trim()));

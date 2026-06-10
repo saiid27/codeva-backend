@@ -55,6 +55,7 @@ PAGES_DIR = os.path.join(os.path.dirname(__file__), "static", "pages")
 DEV_EMAIL = os.getenv("DEV_EMAIL", "codeva@gmail.com")
 DEV_PASSWORD = os.getenv("DEV_PASSWORD", "codeva123")
 MANAGER_ROLES = {"admin", "manager", "company_manager", "company_admin"}
+ATTENDANCE_QR_TOKEN = os.getenv("ATTENDANCE_QR_TOKEN", "codeva-presence-checkin")
 
 
 def database_connect_attempts():
@@ -118,12 +119,8 @@ def db_conn():
         conn.close()
 
 
-def today_token():
-    return datetime.now().strftime("%Y%m%d")
-
-
 def attendance_link():
-    return url_for("worker_checkin_page", token=today_token(), _external=True)
+    return url_for("worker_checkin_page", _external=True)
 
 
 def token_from_qr(value):
@@ -137,6 +134,16 @@ def token_from_qr(value):
             return query["token"][0].strip()
         return parsed.path.rstrip("/").rsplit("/", 1)[-1].strip()
     return value
+
+
+def is_attendance_qr(value):
+    raw_value = (value or "").strip()
+    if not raw_value:
+        return False
+    parsed = urlparse(raw_value)
+    if parsed.scheme and parsed.netloc:
+        return parsed.path.rstrip("/") == url_for("worker_checkin_page").rstrip("/")
+    return raw_value == ATTENDANCE_QR_TOKEN
 
 
 def today_date():
@@ -633,11 +640,34 @@ def worker_checkin_page():
     if not worker_is_authenticated():
         session["worker_next"] = request.full_path
         return redirect(url_for("web_app"))
+    status_message = "تعذر تسجيل الحضور."
+    status_type = "error"
+    ensure_database_initialized()
+    with db_conn() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE email = %s",
+            (session.get("worker_email"),),
+        ).fetchone()
+        if user is None:
+            status_message = "الحساب غير موجود."
+        elif user["status"] != "approved":
+            status_message = "الحساب غير مفعل بعد."
+        else:
+            result, _ = record_qr_attendance(conn, user, validate_qr=False)
+            if result.get("ok") and result.get("already"):
+                status_message = "تم تسجيل حضورك مسبقا اليوم."
+                status_type = "ok"
+            elif result.get("ok"):
+                status_message = "تم تسجيل حضورك بنجاح."
+                status_type = "ok"
+            elif result.get("reason") == "invalid_qr":
+                status_message = "رابط QR غير صالح."
     return render_template(
         "worker_checkin.html",
-        token=token_from_qr(request.args.get("token")),
         worker_email=session.get("worker_email"),
         worker_name=session.get("worker_name"),
+        status_message=status_message,
+        status_type=status_type,
     )
 
 
@@ -1217,33 +1247,24 @@ def reset_password():
 def scan_attendance():
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip()
-    token = token_from_qr(data.get("token"))
     with db_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
         if user is None:
             return jsonify({"ok": False, "reason": "not_found"}), 404
         if user["status"] != "approved":
             return jsonify({"ok": False, "reason": user["status"]}), 403
-        date = today_date()
-        existing = conn.execute(
-            "SELECT id, status, time FROM attendance WHERE user_id = %s AND attend_date = %s",
-            (user["id"], date),
-        ).fetchone()
-        if existing is not None:
-            if token == today_token() and (existing["status"] != "present" or not existing["time"]):
-                conn.execute(
-                    """
-                    UPDATE attendance
-                       SET status = 'present',
-                           time = COALESCE(time, %s),
-                           verification_reason = 'qr'
-                     WHERE id = %s
-                    """,
-                    (now_time(), existing["id"]),
-                )
-                return jsonify({"ok": True, "already": False, "updated": True})
-            return jsonify({"ok": True, "already": True})
-        if token != today_token():
+        result, status_code = record_qr_attendance(conn, user, validate_qr=False)
+    return jsonify(result), status_code
+
+
+def record_qr_attendance(conn, user, qr_value=None, validate_qr=True):
+    date = today_date()
+    existing = conn.execute(
+        "SELECT id, status, time FROM attendance WHERE user_id = %s AND attend_date = %s",
+        (user["id"], date),
+    ).fetchone()
+    if validate_qr and not is_attendance_qr(qr_value):
+        if existing is None:
             conn.execute(
                 """
                 INSERT INTO attendance (user_id, attend_date, status, verification_reason)
@@ -1251,19 +1272,33 @@ def scan_attendance():
                 """,
                 (user["id"], date),
             )
-            return jsonify({"ok": False, "reason": "invalid_qr"}), 400
-        conn.execute(
-            """
-            INSERT INTO attendance (user_id, attend_date, status, time, verification_reason)
-            VALUES (%s, %s, 'present', %s, 'qr')
-            """,
-            (user["id"], date, now_time()),
-        )
-    return jsonify({"ok": True, "already": False})
+        return {"ok": False, "reason": "invalid_qr"}, 400
+    if existing is not None:
+        if existing["status"] != "present" or not existing["time"]:
+            conn.execute(
+                """
+                UPDATE attendance
+                   SET status = 'present',
+                       time = COALESCE(time, %s),
+                       verification_reason = 'qr'
+                 WHERE id = %s
+                """,
+                (now_time(), existing["id"]),
+            )
+            return {"ok": True, "already": False, "updated": True}, 200
+        return {"ok": True, "already": True}, 200
+    conn.execute(
+        """
+        INSERT INTO attendance (user_id, attend_date, status, time, verification_reason)
+        VALUES (%s, %s, 'present', %s, 'qr')
+        """,
+        (user["id"], date, now_time()),
+    )
+    return {"ok": True, "already": False}, 200
 
 
 def record_location_attendance(email, latitude, longitude, token=None):
-    if token is not None and token_from_qr(token) != today_token():
+    if token is not None and not is_attendance_qr(token):
         return jsonify({"ok": False, "reason": "invalid_qr"}), 400
     with db_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE email = %s", (email,)).fetchone()
@@ -1465,7 +1500,7 @@ def reject_user(user_id):
 
 @app.get("/qr/today")
 def qr_today():
-    return jsonify({"token": today_token(), "url": attendance_link()})
+    return jsonify({"token": ATTENDANCE_QR_TOKEN, "url": attendance_link()})
 
 
 @app.get("/company-location")
