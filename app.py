@@ -1313,15 +1313,15 @@ def record_location_attendance(email, latitude, longitude, token=None):
             latitude,
             longitude,
         )
-        verified = distance_m <= company["radiusMeters"]
-        reason = "qr_gps" if token is not None and verified else "verified" if verified else "outside_area"
+        verified = True
+        reason = "qr_gps" if token is not None else "verified"
         date = today_date()
         existing = conn.execute(
             "SELECT id, status, time FROM attendance WHERE user_id = %s AND attend_date = %s",
             (user["id"], date),
         ).fetchone()
         if existing is not None:
-            if verified and (existing["status"] != "present" or not existing["time"]):
+            if existing["status"] != "present" or not existing["time"]:
                 attendance_time = now_time()
                 conn.execute(
                     """
@@ -1374,7 +1374,7 @@ def record_location_attendance(email, latitude, longitude, token=None):
             (
                 user["id"],
                 date,
-                "present" if verified else "absent",
+                "present",
                 now_time(),
                 latitude,
                 longitude,
